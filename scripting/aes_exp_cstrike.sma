@@ -1,23 +1,33 @@
-/* 
-	Advanced Experience System
-	by serfreeman1337		http://gf.hldm.org/
-*/
-
 /*
-	Experience Collector (CSTRIKE)
+*	AES: CStrike Addon		     v. 0.5
+*	by serfreeman1337	    http://1337.uz/
 */
 
 #include <amxmodx>
-
 #include <cstrike>
-#include <csstats>
 #include <csx>
+#include <reapi>
 
-#include <colorchat>
-#include <aes_main>
+#if AMXX_VERSION_NUM < 183
+	#include <colorchat>
+	
+	#define print_team_default DontChange
+	#define print_team_grey Grey
+	#define print_team_red Red
+	#define print_team_blue Blue
+	
+	#define MAX_NAME_LENGTH	32
+	#define MAX_PLAYERS	32
+	
+	#define client_disconnected client_disconnect
+	
+	new MaxClients
+#endif
 
-#define PLUGIN "AES: Exp CSTRIKE"
-#define VERSION "0.3"
+#include <aes_v>
+
+#define PLUGIN "AES: CStrike Addon"
+#define VERSION "0.5.1 Vega[REAPI]"
 #define AUTHOR "serfreeman1337"
 
 /* - CVARS - */
@@ -40,12 +50,25 @@ enum _:cvars_num {
 	CVAR_ANEW_KNIFE,
 	CVAR_ANEW_HE,
 	CVAR_ANEW_REST,
-	CVAR_LEVEL_BONUS
+	CVAR_LEVEL_BONUS,
+	
+	CVAR_RANK,
+	CVAR_BONUS_ENABLE
 }
 
-new cvar[cvars_num],bool:isFFA
+new cvar[cvars_num]
 
 /* - ADD BONUS - */
+
+enum _:
+{
+	STREAK_KILLS,
+	STREAK_HS,
+	STREAK_KNIFE,
+	STREAK_HE,
+	
+	STREAK_OPT
+}
 
 enum _:Arrays{
 	Array:FRAG_ARRAY,
@@ -57,16 +80,13 @@ enum _:Arrays{
 new Array: g_BonusCvars[Arrays]
 new frArrSize,hsArrSize,kfArrSize,heArrSize
 
-new iResetOn,g_maxplayers,g_Players[33][4],bool:isAsMap
+new bool:isAsMap
+new bool:is_by_stats
 
-new iDbType,iBonusPointer
-
-new map[32]
+new g_Players[MAX_PLAYERS + 1][STREAK_OPT]
 
 public plugin_init(){
 	register_plugin(PLUGIN, VERSION, AUTHOR)
-	
-	register_dictionary_colored("aes.txt")
 	
 	cvar[CVAR_XP_KILL] = register_cvar("aes_xp_frag","1")
 	cvar[CVAR_XP_HS] = register_cvar("aes_xp_hs","2")
@@ -90,30 +110,34 @@ public plugin_init(){
 	cvar[CVAR_LEVEL_BONUS] = register_cvar("aes_bonus_levelup","3")
 	cvar[CVAR_XP_DEATH] = register_cvar("aes_xp_death","0")
 	
-	g_maxplayers = get_maxplayers()
+	#if AMXX_VERSION_NUM < 183
+		MaxClients = get_maxplayers()
+	#endif
 }
 
 public plugin_cfg(){
-	iDbType = get_cvar_num("aes_db_type")
+	cvar[CVAR_RANK] = get_cvar_pointer("aes_track_mode")
 	
-	get_mapname(map,31)
-	
-	if(iDbType > 0){
-		if(containi(map,"cs_") == 0){
-			register_logevent("client_touched_a_hostage",3,"1=triggered","2=Touched_A_Hostage")
-			register_logevent("client_rescued_a_hostage",3,"1=triggered","2=Rescued_A_Hostage")
-		}else if(containi(map,"as_") == 0){
-			isAsMap = true
-			
-			register_logevent("client_escaped_as_vip",3,"1=triggered","2=Escaped_As_VIP")
-		}
+	if((cvar[CVAR_RANK] = get_cvar_pointer("aes_track_mode")) == 0)
+	{
+		set_fail_state("cvar ^"aes_track_mode^" not found")
 	}
 	
-	isFFA = get_pcvar_num(cvar[CVAR_XP_FFA]) == 1 ? true : false
+	new map_name[32]
+	get_mapname(map_name,charsmax(map_name))
 	
-	iBonusPointer = get_cvar_pointer("aes_bonus_enable")
+	if(containi(map_name,"cs_") == 0){
+		register_logevent("client_touched_a_hostage",3,"1=triggered","2=Touched_A_Hostage")
+		register_logevent("client_rescued_a_hostage",3,"1=triggered","2=Rescued_A_Hostage")
+	}else if(containi(map_name,"as_") == 0){
+		isAsMap = true
+		
+		register_logevent("client_escaped_as_vip",3,"1=triggered","2=Escaped_As_VIP")
+	}
 	
-	if(!iBonusPointer)
+	cvar[CVAR_BONUS_ENABLE] = get_cvar_pointer("aes_bonus_enable")
+	
+	if(!cvar[CVAR_BONUS_ENABLE])
 		return
 
 	g_BonusCvars[FRAG_ARRAY] = ArrayCreate(2)
@@ -123,128 +147,187 @@ public plugin_cfg(){
 	
 	new levelString[512]
 	
-	get_pcvar_string(cvar[CVAR_ANEW_FRAGS],levelString,511)
+	get_pcvar_string(cvar[CVAR_ANEW_FRAGS],levelString,charsmax(levelString))
 	frArrSize = parse_aes_bonus_values(g_BonusCvars[FRAG_ARRAY],levelString)
 	
-	get_pcvar_string(cvar[CVAR_ANEW_HS],levelString,511)
+	get_pcvar_string(cvar[CVAR_ANEW_HS],levelString,charsmax(levelString))
 	hsArrSize = parse_aes_bonus_values(g_BonusCvars[HS_ARRAY],levelString)
 	
-	get_pcvar_string(cvar[CVAR_ANEW_KNIFE],levelString,511)
+	get_pcvar_string(cvar[CVAR_ANEW_KNIFE],levelString,charsmax(levelString))
 	kfArrSize = parse_aes_bonus_values(g_BonusCvars[KNIFE_ARRAY],levelString)
 	
-	get_pcvar_string(cvar[CVAR_ANEW_HE],levelString,511)
+	get_pcvar_string(cvar[CVAR_ANEW_HE],levelString,charsmax(levelString))
 	heArrSize = parse_aes_bonus_values(g_BonusCvars[HE_ARRAY],levelString)
 	
-	iResetOn = get_pcvar_num(cvar[CVAR_ANEW_REST])
+	if(get_pcvar_num(cvar[CVAR_RANK])== -1)
+	{
+		RegisterHookChain(RG_CBasePlayer_Spawn, "CBasePlayer_Spawn", true)
+		is_by_stats = true
+	}
 }
 
-public client_putinserver(id)
-	if(!iDbType)
-		set_task(0.1,"loadUserStats",id)	// статистика не сразу инициализируется
-
-public loadUserStats(id){
-	if(!is_user_connected(id))
-		return
-		
+//
+// Р Р°СЃС‡РµС‚ РѕРїС‹С‚Р° РїРѕ СЃС‚Р°С‚РёСЃС‚РёРєРµ РёРіСЂРѕРєР° РёР· CSX
+//
+public CBasePlayer_Spawn(const id)
+{
+	if(!is_user_alive(id))
+	{
+		return HC_CONTINUE
+	}
+	
 	new stats[8],bprelated[4],bh[8]
 		
 	get_user_stats(id,stats,bh)
 	get_user_stats2(id,bprelated)
 	
-	new exp = get_exp_for_stats(stats,bprelated)
+	new Float:exp = get_exp_for_stats(stats,bprelated)
+	aes_set_player_exp(id,exp,true,true)
 	
-	new st[3]
-	
-	st[0] = exp
-	st[1] = aes_get_level_for_exp(exp)
-	st[2] = 0
-	
-	aes_set_player_stats(id,st)
+	return HC_CONTINUE
 }
 
-get_exp_for_stats(stats[8],bprelated[4]){
+
+//
+// native Float:aes_get_exp_for_stats_f(stats[8],stats2[4])
+//
+public plugin_natives()
+{
+	register_native("aes_get_exp_for_stats_f","_aes_get_exp_for_stats_f")
+	register_native("aes_get_exp_for_stats","_aes_get_exp_for_stats")
+}
+
+public Float:_aes_get_exp_for_stats_f(plugin_id,params)
+{
+	if(!is_by_stats)
+	{
+		return -1.0
+	}
+	
+	if(params != 2)
+	{
+		log_error(AMX_ERR_NATIVE,"bad arguments num, expected 2, passed %d",params)
+		return 0.0
+	}
+
+	new stats[8],bprelated[4]
+	get_array(1,stats,sizeof stats)
+	get_array(2,bprelated,sizeof bprelated)
+	
+	return get_exp_for_stats(stats,bprelated)
+}
+
+public _aes_get_exp_for_stats(plugin_id,params)
+{
+	if(!is_by_stats)
+	{
+		return -1
+	}
+	
+	if(params != 2)
+	{
+		log_error(AMX_ERR_NATIVE,"bad arguments num, expected 2, passed %d",params)
+		return 0
+	}
+
+	new stats[8],bprelated[4]
+	get_array(1,stats,sizeof stats)
+	get_array(2,bprelated,sizeof bprelated)
+	
+	return floatround(get_exp_for_stats(stats,bprelated))
+}
+
+Float:get_exp_for_stats(stats[8],bprelated[4]){
 	stats[0] = stats[0] - stats[2]
 	
-	new exp = (stats[0] * get_pcvar_num(cvar[CVAR_XP_KILL])) + (stats[2] * get_pcvar_num(cvar[CVAR_XP_HS]))
-	exp += (bprelated[2] * get_pcvar_num(cvar[CVAR_XP_C4_PLANT])) + (bprelated[3] * get_pcvar_num(cvar[CVAR_XP_C4_EXPLODE]))
-	exp += bprelated[1] * get_pcvar_num(cvar[CVAR_XP_C4_DEFUSED])
+	new Float:exp = (float(stats[0]) * get_pcvar_float(cvar[CVAR_XP_KILL])) + (float(stats[2]) * get_pcvar_float(cvar[CVAR_XP_HS]))
+	exp += (float(bprelated[2]) * get_pcvar_float(cvar[CVAR_XP_C4_PLANT])) + (float(bprelated[3]) * get_pcvar_float(cvar[CVAR_XP_C4_EXPLODE]))
+	exp += float(bprelated[1]) * get_pcvar_float(cvar[CVAR_XP_C4_DEFUSED])
 	
 	return exp
 	
 }
 
-public client_disconnect(id)
-	if(iBonusPointer)
-		arrayset(g_Players[id],0,4)
+public client_disconnected(id)
+	if(cvar[CVAR_BONUS_ENABLE])
+		arrayset(g_Players[id],0,STREAK_OPT)
 
 public client_death(killer,victim,wpn,hit,TK){
-	if(!killer && killer > g_maxplayers || killer == victim)
+	if((0 < killer <= MaxClients) == false || killer == victim)
 		return
 	
-	if(TK && !isFFA)
+	if(TK && !get_pcvar_num(cvar[CVAR_XP_FFA]))
 		return
-
-	aes_add_player_exp(killer,hit != HIT_HEAD ? get_pcvar_num(cvar[CVAR_XP_KILL]) : get_pcvar_num(cvar[CVAR_XP_HS]))
-	aes_add_player_exp(victim,get_pcvar_num(cvar[CVAR_XP_DEATH]))
+		
+	if(hit != HIT_HEAD)
+	{
+		aes_add_player_exp_f(killer,get_pcvar_float(cvar[CVAR_XP_KILL]))
+	}
+	else
+	{
+		aes_add_player_exp_f(killer,get_pcvar_float(cvar[CVAR_XP_HS]))
+	}
 	
-	// игрок убил VIP
+	aes_add_player_exp_f(victim,get_pcvar_float(cvar[CVAR_XP_DEATH]))
+	
+	// РёРіСЂРѕРє СѓР±РёР» VIP
 	if(isAsMap && cs_get_user_vip(victim)){
 		if(get_playersnum() >= get_pcvar_num(cvar[CVAR_XP_GOAL_MIN_PLAYERS]))
-			aes_add_player_exp(killer,get_pcvar_num(cvar[CVAR_XP_VIP_KILLED]))
+			aes_add_player_exp_f(killer,get_pcvar_float(cvar[CVAR_XP_VIP_KILLED]))
 	}
 		
 	
-	// бонусы не включены или временно не работают
-	if(!iBonusPointer || !get_pcvar_num(iBonusPointer))
+	// Р±РѕРЅСѓСЃС‹ РЅРµ РІРєР»СЋС‡РµРЅС‹ РёР»Рё РІСЂРµРјРµРЅРЅРѕ РЅРµ СЂР°Р±РѕС‚Р°СЋС‚
+	if(!cvar[CVAR_BONUS_ENABLE] || !get_pcvar_num(cvar[CVAR_BONUS_ENABLE]))
 		return
 
-	g_Players[killer][0] ++
+	g_Players[killer][STREAK_KILLS] ++
 	
 	new bonusPoints = 0
 	
 	bonusPoints += get_current_player_bonuses(killer,frArrSize,0,g_BonusCvars[FRAG_ARRAY])
 	
 	if(hit == HIT_HEAD){
-		g_Players[killer][1] ++
+		g_Players[killer][STREAK_HS] ++
 		
 		bonusPoints += get_current_player_bonuses(killer,hsArrSize,1,g_BonusCvars[HS_ARRAY])
 	}
 	
 	if(wpn == CSW_KNIFE){
-		g_Players[killer][2] ++
+		g_Players[killer][STREAK_KNIFE] ++
 		
 		bonusPoints += get_current_player_bonuses(killer,kfArrSize,2,g_BonusCvars[KNIFE_ARRAY])
 	}
 		
 	if(wpn == CSW_HEGRENADE){
-		g_Players[killer][3] ++
+		g_Players[killer][STREAK_KNIFE] ++
 		
 		bonusPoints += get_current_player_bonuses(killer,heArrSize,3,g_BonusCvars[HE_ARRAY])
 	}
 		
-	if(iResetOn == 1)
-		arrayset(g_Players[victim],0,4)
+	if(get_pcvar_num(cvar[CVAR_ANEW_REST]) == 1)
+		arrayset(g_Players[victim],0,STREAK_OPT)
 	
 	if(bonusPoints){
-		client_print_color(killer,0,"%L %L",killer,"AES_TAG",killer,"AES_ANEW_GAIN",bonusPoints)
-		aes_add_player_bonus(killer,bonusPoints)
+		client_print_color(killer,print_team_default,"%L %L",killer,"AES_TAG",killer,"AES_ANEW_GAIN",bonusPoints)
+		aes_add_player_bonus_f(killer,bonusPoints)
 	}
 }
 
 
-// бонусы при получении нового звания
+// Р±РѕРЅСѓСЃС‹ РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РЅРѕРІРѕРіРѕ Р·РІР°РЅРёСЏ
 public aes_player_levelup(id){
-	if(!iBonusPointer || !get_pcvar_num(cvar[CVAR_LEVEL_BONUS]))
+	if(!cvar[CVAR_BONUS_ENABLE] || !get_pcvar_float(cvar[CVAR_LEVEL_BONUS]))
 		return
 		
-	aes_add_player_bonus(id,get_pcvar_num(cvar[CVAR_LEVEL_BONUS]))
+	aes_add_player_bonus_f(id,get_pcvar_num(cvar[CVAR_LEVEL_BONUS]))
 }
 
 public bomb_planted(id){
 	if(get_playersnum() < get_pcvar_num(cvar[CVAR_XP_GOAL_MIN_PLAYERS]))
 		return
 	
-	aes_add_player_exp(id,get_pcvar_num(cvar[CVAR_XP_C4_PLANT]))
+	aes_add_player_exp_f(id,get_pcvar_float(cvar[CVAR_XP_C4_PLANT]))
 }
 	
 	
@@ -252,14 +335,14 @@ public bomb_explode(id){
 	if(get_playersnum() < get_pcvar_num(cvar[CVAR_XP_GOAL_MIN_PLAYERS]))
 		return
 		
-	aes_add_player_exp(id,get_pcvar_num(cvar[CVAR_XP_C4_EXPLODE]))
+	aes_add_player_exp_f(id,get_pcvar_float(cvar[CVAR_XP_C4_EXPLODE]))
 }
 	
 public bomb_defused(id){
 	if(get_playersnum() < get_pcvar_num(cvar[CVAR_XP_GOAL_MIN_PLAYERS]))
 		return
 		
-	aes_add_player_exp(id,get_pcvar_num(cvar[CVAR_XP_C4_DEFUSED]))
+	aes_add_player_exp_f(id,get_pcvar_float(cvar[CVAR_XP_C4_DEFUSED]))
 }
 
 public client_escaped_as_vip(){
@@ -268,7 +351,7 @@ public client_escaped_as_vip(){
 	
 	new arg[64],nn[2],userid
 	
-	read_logargv(0,arg,64)
+	read_logargv(0,arg,charsmax(arg))
 	parse_loguser(arg,nn,1,userid)
 
 	userid = find_player("k",userid)
@@ -276,7 +359,7 @@ public client_escaped_as_vip(){
 	if(userid == 0)
 		return
 
-	aes_add_player_exp(userid,get_pcvar_num(cvar[CVAR_XP_VIP_ESCAPED]))
+	aes_add_player_exp_f(userid,get_pcvar_float(cvar[CVAR_XP_VIP_ESCAPED]))
 }
 
 public client_touched_a_hostage(){
@@ -285,7 +368,7 @@ public client_touched_a_hostage(){
 		
 	new arg[64],nn[2],userid
 	
-	read_logargv(0,arg,64)
+	read_logargv(0,arg,charsmax(arg))
 	parse_loguser(arg,nn,1,userid)
 
 	userid = find_player("k",userid)
@@ -293,7 +376,7 @@ public client_touched_a_hostage(){
 	if(userid == 0)
 		return
 		
-	aes_add_player_exp(userid,get_pcvar_num(cvar[CVAR_XP_HOST_GOT]))
+	aes_add_player_exp_f(userid,get_pcvar_float(cvar[CVAR_XP_HOST_GOT]))
 }
 
 public client_rescued_a_hostage(){
@@ -302,7 +385,7 @@ public client_rescued_a_hostage(){
 		
 	new arg[64],nn[2],userid
 	
-	read_logargv(0,arg,64)
+	read_logargv(0,arg,charsmax(arg))
 	parse_loguser(arg,nn,1,userid)
 
 	userid = find_player("k",userid)
@@ -310,12 +393,12 @@ public client_rescued_a_hostage(){
 	if(userid == 0)
 		return
 		
-	aes_add_player_exp(userid,get_pcvar_num(cvar[CVAR_XP_HOST_RESCUE]))
+	aes_add_player_exp_f(userid,get_pcvar_float(cvar[CVAR_XP_HOST_RESCUE]))
 }
 
-// проверка на кол-во бонусных очков игрока
-// cmpr - какой параметр проверяем
-// Array:which - по какому массиву
+// РїСЂРѕРІРµСЂРєР° РЅР° РєРѕР»-РІРѕ Р±РѕРЅСѓСЃРЅС‹С… РѕС‡РєРѕРІ РёРіСЂРѕРєР°
+// cmpr - РєР°РєРѕР№ РїР°СЂР°РјРµС‚СЂ РїСЂРѕРІРµСЂСЏРµРј
+// Array:which - РїРѕ РєР°РєРѕРјСѓ РјР°СЃСЃРёРІСѓ
 public get_current_player_bonuses(id,size,cmpr,Array:which){
 	new bonusPoints,rt[2],i
 	
@@ -329,64 +412,35 @@ public get_current_player_bonuses(id,size,cmpr,Array:which){
 	return bonusPoints
 }
 
-// парсер значений бонусов в массив
+// РїР°СЂСЃРµСЂ Р·РЅР°С‡РµРЅРёР№ Р±РѕРЅСѓСЃРѕРІ РІ РјР°СЃСЃРёРІ
 public parse_aes_bonus_values(Array:which,levelString[]){
 	new stPos,ePos,rawPoint[20],rawVals[2],stState
 	
-	// значение не задано
+	// Р·РЅР°С‡РµРЅРёРµ РЅРµ Р·Р°РґР°РЅРѕ
 	if(!strlen(levelString))
 		return 0
 	
 	do {
-		// ищем пробел
+		// РёС‰РµРј РїСЂРѕР±РµР»
 		ePos = strfind(levelString[stPos]," ")
 		
-		// узнаем значение с позиции stPos и длинной ePos
+		// СѓР·РЅР°РµРј Р·РЅР°С‡РµРЅРёРµ СЃ РїРѕР·РёС†РёРё stPos Рё РґР»РёРЅРЅРѕР№ ePos
 		formatex(rawPoint,ePos,levelString[stPos])
 		rawVals[stState] = str_to_num(rawPoint)
 		
 		stPos += ePos + 1
 		
-		// указатель 2ой пары
+		// СѓРєР°Р·Р°С‚РµР»СЊ 2РѕР№ РїР°СЂС‹
 		stState ++
 		
-		// два значения были найдены
-		// записываем их в массив и сбрасываем указатель
+		// РґРІР° Р·РЅР°С‡РµРЅРёСЏ Р±С‹Р»Рё РЅР°Р№РґРµРЅС‹
+		// Р·Р°РїРёСЃС‹РІР°РµРј РёС… РІ РјР°СЃСЃРёРІ Рё СЃР±СЂР°СЃС‹РІР°РµРј СѓРєР°Р·Р°С‚РµР»СЊ
 		if(stState == 2){
 			ArrayPushArray(which,rawVals)
 			stState = 0
 		}
 	} while(ePos != -1)
 	
-	// возвращает кол-во 2ых пар
+	// РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»-РІРѕ 2С‹С… РїР°СЂ
 	return ArraySize(which)
-}
-
-public plugin_natives()
-	register_native("aes_get_exp_for_stats","_aes_get_exp_for_stats")
-
-/*
-	Returns exp value for given stats.
-	
-	stats[8] = get_user_stats
-	bprelated[4] = get_user_stats2
-	
-	@return - exp for given stats
-	
-	native aes_get_exp_for_stats(stats[8],stats2[4])
-*/
-	
-public _aes_get_exp_for_stats(plugin,params){
-	if(params < 2){
-		log_error(AMX_ERR_NATIVE,"bad arguments num, expected 2, passed %d", params)
-		
-		return 0
-	}
-	
-	new stats[8],bprelated[4]
-	
-	get_array(1,stats,8)
-	get_array(2,bprelated,4)
-	
-	return get_exp_for_stats(stats,bprelated)
 }

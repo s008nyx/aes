@@ -1,26 +1,35 @@
-/* 
-	Advanced Experience System
-	by serfreeman1337		http://gf.hldm.org/
+/*
+*	AES: Admin Tools		     v. 0.5
+*	by serfreeman1337	    http://1337.uz/
 */
 
 /*
-	Experience Editor
+	TODO:
+		РџРѕРґРґРµСЂР¶РєР° show_activity
 */
 
 #include <amxmodx>
 #include <amxmisc>
 
-#include <aes_main>
-
-#define PLUGIN "AES: Experience Editor"
-#define VERSION "0.1"
-#define AUTHOR "serfreeman1337"
-
-#define USE_COLORCHAT
-
-#if defined USE_COLORCHAT
+#if AMXX_VERSION_NUM < 183
 	#include <colorchat>
+	
+	#define print_team_default DontChange
+	#define print_team_grey Grey
+	#define print_team_red Red
+	#define print_team_blue Blue
+	
+	#define MAX_NAME_LENGTH 32
+	#define MAX_PLAYERS 32
+	
+	#define client_disconnected client_disconnect
 #endif
+
+#include <aes_v>
+
+#define PLUGIN "AES: Admin Tools"
+#define VERSION "0.5.1 Vega[REAPI]"
+#define AUTHOR "serfreeman1337 & akella"
 
 enum _:cvars {
 	CVAR_EXP_MENU
@@ -48,8 +57,8 @@ enum _:menuSetMode {
 	M_ADD_EXP = 1,
 	M_SUB_EXP,
 	M_SET_EXP,
-	M_SET_BONUSES,
-	M_SET_LEVEL
+	M_SET_LEVEL,
+	M_SET_BONUSES
 }
 
 new g_MenuStatus[33][menuStatus]
@@ -88,7 +97,7 @@ public C_Set_Exp(id,level,cid){
 	trim(args)
 	remove_quotes(args)
 	
-	new usrId[32],sExpVal[32],expVal
+	new usrId[32],sExpVal[32],Float:expVal
 	strtok(args,usrId,31,sExpVal,31,' ',1)
 	
 	new player = cmd_target(id,usrId,CMDTARGET_OBEY_IMMUNITY|CMDTARGET_ALLOW_SELF)
@@ -96,22 +105,16 @@ public C_Set_Exp(id,level,cid){
 	if(!player)
 		return PLUGIN_HANDLED
 		
-	expVal = max(0,str_to_num(sExpVal))
+	expVal = floatmax(0.0,floatstr(sExpVal))
 		
-	new stats[3]
-	
-	stats[0] = expVal
-	stats[1] = -1
-	stats[2] = -1
-	
-	if(aes_set_player_stats(player,stats)){
+	if(aes_set_player_exp(player,expVal,.force = true)){
 		new vicName[32]
 		get_user_name(player,vicName,31)
 		
 		client_print(id,print_console,"%L %L",
 			id,"AES_TAG_CON",
 			id,"ACT_CON_EXP",
-			vicName,expVal)
+			vicName,Get_ValuevStr(expVal))
 			
 		A_Chat_Msg(id,player,M_SET_EXP,expVal)
 	}else{
@@ -142,17 +145,11 @@ public C_Set_Level(id,level,cid){
 		return PLUGIN_HANDLED
 		
 	expVal = max(0,str_to_num(sExpVal))
-		
-	new stats[3]
 	
-	stats[0] = -1
-	stats[1] = expVal
-	stats[2] = -1
-	
-	if(aes_set_player_stats(player,stats)){
+	if(aes_set_player_level(player,expVal,.force = true)){
 		new vicName[32],vicLevel[32]
 		get_user_name(player,vicName,31)
-		aes_get_level_name(stats[1],vicLevel,31,id)
+		aes_get_level_name(expVal,vicLevel,charsmax(vicLevel),id)
 		
 		client_print(id,print_console,"%L %L",
 			id,"AES_TAG_CON",
@@ -169,70 +166,67 @@ public C_Set_Level(id,level,cid){
 	return PLUGIN_HANDLED
 }
 
-// обработка своего значения опыта или бонусов
+// РѕР±СЂР°Р±РѕС‚РєР° СЃРІРѕРµРіРѕ Р·РЅР°С‡РµРЅРёСЏ РѕРїС‹С‚Р° РёР»Рё Р±РѕРЅСѓСЃРѕРІ
 public C_Exp_Set(id,level,cid){
-	// проверяем достууп
+	// РїСЂРѕРІРµСЂСЏРµРј РґРѕСЃС‚СѓСѓРї
 	if(!cmd_access(id,level,cid,0))
 		return PLUGIN_HANDLED
 		
-	// проверяем что действие было выбрано через меню
+	// РїСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РґРµР№СЃС‚РІРёРµ Р±С‹Р»Рѕ РІС‹Р±СЂР°РЅРѕ С‡РµСЂРµР· РјРµРЅСЋ
 	if(!g_MenuStatus[id][MENU_SETMODE])
 		return PLUGIN_HANDLED
 		
-	// игрок отключился. Ничего не делаем.
+	// РёРіСЂРѕРє РѕС‚РєР»СЋС‡РёР»СЃСЏ. РќРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј.
 	if(!is_user_connected(g_MenuStatus[id][MENU_EDITID]))
 		return PLUGIN_HANDLED
 		
-	new sExpVal[20],expVal
+	new sExpVal[20],Float:expVal
 	
 	read_args(sExpVal,19)
 	trim(sExpVal)
 	remove_quotes(sExpVal)
 	
-	// админ не ввел значение Ничего не делаем.
+	// Р°РґРјРёРЅ РЅРµ РІРІРµР» Р·РЅР°С‡РµРЅРёРµ РќРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј.
 	if(!strlen(sExpVal))
 		return PLUGIN_HANDLED
 	
-	expVal = str_to_num(sExpVal)
+	expVal = floatstr(sExpVal)
 	
 	switch(g_MenuStatus[id][MENU_SETMODE]){
 		case M_ADD_EXP,M_SUB_EXP,M_SET_EXP:{
 			if(g_MenuStatus[id][MENU_SETMODE] != M_SET_EXP){
-				aes_add_player_exp(g_MenuStatus[id][MENU_EDITID],
-					g_MenuStatus[id][MENU_SETMODE] == M_ADD_EXP ? expVal : -expVal,1)
+				aes_set_player_exp(g_MenuStatus[id][MENU_EDITID],
+					g_MenuStatus[id][MENU_SETMODE] == M_ADD_EXP ? 
+						floatadd(
+							aes_get_player_exp(g_MenuStatus[id][MENU_EDITID]),
+							expVal) :
+						floatsub(
+							aes_get_player_exp(g_MenuStatus[id][MENU_EDITID]),
+							expVal),
+					.force = true
+				)
+					
 				
 				A_Chat_Msg(id,g_MenuStatus[id][MENU_EDITID],g_MenuStatus[id][MENU_SETMODE] == M_SUB_EXP ? M_SUB_EXP : M_ADD_EXP,
 					g_MenuStatus[id][MENU_SETMODE] == M_SUB_EXP ? -expVal : expVal)
 			}else{
-				new stats[3] = -1
-				
-				stats[AES_ST_EXP] = expVal
-				stats[AES_ST_LEVEL] = -1
-				stats[AES_ST_BONUSES] = -1
-				
-				aes_set_player_stats(g_MenuStatus[id][MENU_EDITID],stats)
+				aes_set_player_exp(g_MenuStatus[id][MENU_EDITID],expVal,.force = true)
 			}
 		}
 		case M_SET_BONUSES:{
-			new stats[3] = -1
-				
-			stats[AES_ST_EXP] = -1
-			stats[AES_ST_LEVEL] = -1
-			stats[AES_ST_BONUSES] = expVal
-			
 			A_Chat_Msg(id,g_MenuStatus[id][MENU_EDITID],M_SET_BONUSES,expVal)
-			aes_set_player_stats(g_MenuStatus[id][MENU_EDITID],stats)
+			aes_set_player_bonus(g_MenuStatus[id][MENU_EDITID],floatround(expVal),.force = true)
 		}
 	}
 	
-	// показываем меню действий над игроком
+	// РїРѕРєР°Р·С‹РІР°РµРј РјРµРЅСЋ РґРµР№СЃС‚РІРёР№ РЅР°Рґ РёРіСЂРѕРєРѕРј
 	E_Build_Action_Menu(id,g_MenuStatus[id][MENU_EDITID])
 	
 	return PLUGIN_HANDLED
 }
 
 
-public A_Chat_Msg(id,editId,actId,valuev){
+public A_Chat_Msg(id,editId,actId,any:valuev){
 	new admName[32],admAuth[36],editName[32],editAuth[36]
 	
 	get_user_name(id,admName,31)
@@ -246,8 +240,8 @@ public A_Chat_Msg(id,editId,actId,valuev){
 		"ACT_ADD_EXP",
 		"ACT_SUB_EXP",
 		"ACT_ADD_EXP",
-		"ACT_SET_BONUS",
-		"ACT_SET_LEVEL"
+		"ACT_SET_LEVEL",
+		"ACT_SET_BONUS"
 	}
 	
 	new const LogAct[][] = {
@@ -255,21 +249,21 @@ public A_Chat_Msg(id,editId,actId,valuev){
 		"add <s> exp",
 		"sub <s> exp",
 		"set <s> exp",
-		"set <s> bonuses",
-		"set level <s> for"
+		"set level <s> for",
+		"set <s> bonuses"
 	}
 	
 	new nikolay[32]
 		
 	if(actId == M_SET_LEVEL){
-		aes_get_level_name(valuev,nikolay,31,editId)
+		aes_get_level_name(valuev,nikolay,charsmax(nikolay),editId)
 	}else{
-		formatex(nikolay,31,"%d",actId != M_SUB_EXP ? valuev : -valuev)
+		formatex(nikolay,charsmax(nikolay),"%s",actId != M_SUB_EXP ? Get_ValuevStr(valuev) : Get_ValuevStr(floatabs(valuev)))
 	}
 	
 	new logMsg[46]
-	formatex(logMsg,45,"%s",LogAct[actId])
-	replace_all(logMsg,45,"<s>",nikolay)
+	formatex(logMsg,charsmax(logMsg),"%s",LogAct[actId])
+	replace_all(logMsg,charsmax(logMsg),"<s>",nikolay)
 	
 	log_amx("^"%s<%d><%s><>^" %s ^"%s<%d><%s><>^"",
 		admName,
@@ -282,56 +276,57 @@ public A_Chat_Msg(id,editId,actId,valuev){
 		get_user_userid(editId),
 		editAuth)
 	
-	#if defined USE_COLORCHAT
-		client_print_color(editId,0,"%L %L",
+	client_print_color(editId,print_team_default,"%L %L",
+		editId,"AES_TAG",
+		editId,LangAct[actId],
+		admName,
+		nikolay)
+	
+	/*
+	if(id != editId)
+	{
+		client_print_color(id,print_team_default,"%L %L",
 			editId,"AES_TAG",
-			editId,LangAct[actId],
-			admName,
-			nikolay)
-			
-		if(id != editId)
-			client_print_color(id,0,"%L %L",
-				editId,"AES_TAG",
-				id,LangAct[actId],
-				nikolay,
-				editName)
-	#else
-		client_print(editId,print_chat,"%L %L",
-			id,"AES_TAG",
-			editId,LangAct[actId],
-			admName,
-			nikolay)
-			
-		if(id != editId)
-			client_print(id,print_chat,"%L %L",id,LangAct[actId],
-				id,"AES_TAG",
-				nikolay,
-				editName)
-	#endif
+			id,LangAct[actId],
+			nikolay,
+			editName)
+	}
+	*/
 }
 
-// список игроков
+// СЃРїРёСЃРѕРє РёРіСЂРѕРєРѕРІ
 public E_Build_Players_Menu(id){
 	arrayset(g_MenuStatus[id],0,menuStatus)
 	
 	new langStr[96]
-	formatex(langStr,95,"%L %L",id,"AES_TAG_MENU",id,"TITLE")
+	formatex(langStr,charsmax(langStr),"%L %L",id,"AES_TAG_MENU",id,"TITLE")
 	
 	new m = menu_create(langStr,"E_Menu_Handler")
 	
 	g_MenuStatus[id][MENU_CURRENT] = MID_LIST
 	
-	new players[32],pCount
-	new aStats[AES_ST_END],name[32],lKey[10]
+	new players[MAX_PLAYERS],pCount
+	new name[MAX_NAME_LENGTH],lKey[10]
 	
 	get_players(players,pCount)
 	
-	for(new i ; i < pCount ; ++i){
-		get_user_name(players[i],name,31)
-		aes_get_player_stats(players[i],aStats)
+	for(new i,player ; i < pCount ; ++i){
+		player = players[i]
+		get_user_name(player,name,charsmax(name))
 		
-		formatex(langStr,95,"%s \y(%d/%d)",name,aStats[AES_ST_EXP],aes_get_exp_to_next_level(aStats[AES_ST_LEVEL]))
-		formatex(lKey,9,"l%d",players[i])
+		formatex(langStr,charsmax(langStr),"%s \y(%s/%s)",
+			name,
+			Get_ValuevStr(
+				aes_get_player_exp(player)
+			),
+			Get_ValuevStr(
+				aes_get_level_reqexp(
+					aes_get_player_level(player)
+				)
+			)
+		)
+		
+		formatex(lKey,charsmax(lKey),"l%d",player)
 		
 		menu_additem(m,langStr,lKey)
 	}
@@ -340,7 +335,7 @@ public E_Build_Players_Menu(id){
 	menu_display(id,m)
 }
 
-// меню действий
+// РјРµРЅСЋ РґРµР№СЃС‚РІРёР№
 public E_Build_Action_Menu(id,editId){
 	if(!is_user_connected(editId)){
 		E_Build_Players_Menu(id)
@@ -353,31 +348,32 @@ public E_Build_Action_Menu(id,editId){
 	new langStr[96],actName[32],lKey[10]
 	get_user_name(editId,actName,31)
 	
-	formatex(langStr,95,"%L %L %s",id,"AES_TAG_MENU",id,"TITLE_ACT",actName)
+	formatex(langStr,charsmax(langStr),"%L %L %s",id,"AES_TAG_MENU",id,"TITLE_ACT",actName)
 	
 	new m = menu_create(langStr,"E_Menu_Handler")
 	
-	formatex(langStr,95,"%L",id,"ADD_EXP")
-	formatex(lKey,9,"e1#%d",editId)
+	formatex(langStr,charsmax(langStr),"%L",id,"ADD_EXP")
+	formatex(lKey,charsmax(lKey),"e1#%d",editId)
 	menu_additem(m,langStr,lKey)
 	
-	formatex(langStr,95,"%L",id,"SUB_EXP")
-	formatex(lKey,9,"e2#%d",editId)
+	formatex(langStr,charsmax(langStr),"%L",id,"SUB_EXP")
+	formatex(lKey,charsmax(lKey),"e2#%d",editId)
 	menu_additem(m,langStr,lKey)
 	
-	formatex(langStr,95,"%L",id,"SET_EXP")
-	formatex(lKey,9,"e3#%d",editId)
+	formatex(langStr,charsmax(langStr),"%L",id,"SET_EXP")
+	formatex(lKey,charsmax(lKey),"e3#%d",editId)
 	menu_additem(m,langStr,lKey)
 	
-	formatex(langStr,95,"%L",id,"SET_LEVEL")
-	formatex(lKey,9,"e4#%d",editId)
+	formatex(langStr,charsmax(langStr),"%L",id,"SET_LEVEL")
+	formatex(lKey,charsmax(lKey),"e4#%d",editId)
 	menu_additem(m,langStr,lKey)
 	
-	formatex(langStr,95,"%L",id,"SET_BONUSES")
-	formatex(lKey,9,"e5#%d",editId)
+	formatex(langStr,charsmax(langStr),"%L",id,"SET_BONUSES")
+	formatex(lKey,charsmax(lKey),"e5#%d",editId)
 	menu_additem(m,langStr,lKey)
 	
 	E_Menu_Add_Player_Info(id,editId,m)
+	F_Format_NavButtons(id,m)
 	
 	menu_display(id,m)
 	
@@ -385,27 +381,32 @@ public E_Build_Action_Menu(id,editId){
 }
 
 
-// информация о текущем игроке в меню
+// РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ С‚РµРєСѓС‰РµРј РёРіСЂРѕРєРµ РІ РјРµРЅСЋ
 public E_Menu_Add_Player_Info(id,editId,m){
-	new langStr[128],actName[32]
-	get_user_name(editId,actName,31)
+	new langStr[128],actName[MAX_NAME_LENGTH]
+	get_user_name(editId,actName,charsmax(actName))
 	
-	new aStats[AES_ST_END],aLevel[32]
+	new aLevel[AES_MAX_LEVEL_LENGTH]
+	new Float:player_exp = aes_get_player_exp(editId)
+	new player_level = aes_get_player_level(editId)
+	new player_bonus = aes_get_player_bonus(editId)
 	
-	aes_get_player_stats(editId,aStats)
-	aes_get_level_name(aStats[AES_ST_LEVEL],aLevel,31,id)
+	aes_get_level_name(player_level,aLevel,charsmax(aLevel),id)
 	
-	formatex(langStr,127,"%L",id,"EXP_TEXT",
+	formatex(langStr,charsmax(langStr),"%L",id,"EXP_TEXT",
 		actName,
-		aStats[AES_ST_EXP],aes_get_exp_to_next_level(aStats[AES_ST_LEVEL]),
-		aStats[AES_ST_LEVEL] + 1,aLevel,
-		aStats[AES_ST_BONUSES])
+		Get_ValuevStr(player_exp),
+		Get_ValuevStr(aes_get_level_reqexp(player_level)),
+		player_level + 1,aLevel,
+		player_bonus
+	)
+	
 	menu_addtext(m,langStr)
 }
 
-// меню добавления или вычитания опыта
+// РјРµРЅСЋ РґРѕР±Р°РІР»РµРЅРёСЏ РёР»Рё РІС‹С‡РёС‚Р°РЅРёСЏ РѕРїС‹С‚Р°
 public E_Build_Exp_Menu(id,editId,bool:isSub){
-	// отображаем список игроков, если выбранный игрок отключился
+	// РѕС‚РѕР±СЂР°Р¶Р°РµРј СЃРїРёСЃРѕРє РёРіСЂРѕРєРѕРІ, РµСЃР»Рё РІС‹Р±СЂР°РЅРЅС‹Р№ РёРіСЂРѕРє РѕС‚РєР»СЋС‡РёР»СЃСЏ
 	if(!is_user_connected(editId)){
 		E_Build_Players_Menu(id)
 				
@@ -415,27 +416,27 @@ public E_Build_Exp_Menu(id,editId,bool:isSub){
 	g_MenuStatus[id][MENU_CURRENT] = MID_ADD_EXP
 	g_MenuStatus[id][MENU_EDITID] = editId
 	
-	// загружаем массив со значением опыта
+	// Р·Р°РіСЂСѓР¶Р°РµРј РјР°СЃСЃРёРІ СЃРѕ Р·РЅР°С‡РµРЅРёРµРј РѕРїС‹С‚Р°
 	if(g_ExpsVals == Invalid_Array)
 		V_Load_Exp_Vals()
 		
-	new langStr[96],cell,lKey[10]
+	new langStr[96],Float:cell,lKey[10]
 	
-	formatex(langStr,95,"%L %L",id,"AES_TAG_MENU",id,!isSub ? "ADD_EXP" : "SUB_EXP")
+	formatex(langStr,charsmax(langStr),"%L %L",id,"AES_TAG_MENU",id,!isSub ? "ADD_EXP" : "SUB_EXP")
 	
 	new m = menu_create(langStr,"E_Menu_Handler")
 	
-	for(new i ; i < ArraySize(g_ExpsVals) ; ++i){
+	for(new i,length = ArraySize(g_ExpsVals) ; i < length ; ++i){
 		cell = ArrayGetCell(g_ExpsVals,i)
 		
-		formatex(langStr,95,"%L",id,!isSub ? "ADD_EXP_ITEM" : "SUB_EXP_ITEM",cell)
-		formatex(lKey,9,"d%d#%s%d",editId,!isSub ? "" : "-" , cell)
+		formatex(langStr,charsmax(langStr),"%L",id,!isSub ? "ADD_EXP_ITEM" : "SUB_EXP_ITEM",Get_ValuevStr(cell))
+		formatex(lKey,charsmax(lKey),"d%d#%s%s",editId,!isSub ? "" : "-" , Get_ValuevStr(cell))
 		
 		menu_additem(m,langStr,lKey)
 	}
 	
-	formatex(langStr,95,"%L",id,"EXP_SELF")
-	formatex(lKey,9,"d%d#%sself",editId, !isSub ? "" : "-")
+	formatex(langStr,charsmax(langStr),"%L",id,"EXP_SELF")
+	formatex(lKey,charsmax(lKey),"d%d#%sself",editId, !isSub ? "" : "-")
 	
 	menu_additem(m,langStr,lKey)
 	
@@ -450,19 +451,19 @@ public E_Build_Exp_Menu(id,editId,bool:isSub){
 public F_Format_NavButtons(id,menu){
 	new tmpLang[20]
 	
-	formatex(tmpLang,19,"%L",id,"BACK")
+	formatex(tmpLang,charsmax(tmpLang),"%L",id,"BACK")
 	menu_setprop(menu,MPROP_BACKNAME,tmpLang)
 	
-	formatex(tmpLang,19,"%L",id,"EXIT")
+	formatex(tmpLang,charsmax(tmpLang),"%L",id,"EXIT")
 	menu_setprop(menu,MPROP_EXITNAME,tmpLang)
 	
-	formatex(tmpLang,19,"%L",id,"MORE")
+	formatex(tmpLang,charsmax(tmpLang),"%L",id,"MORE")
 	menu_setprop(menu,MPROP_NEXTNAME,tmpLang)
 }
 
-// меню для задания уровня игроку
+// РјРµРЅСЋ РґР»СЏ Р·Р°РґР°РЅРёСЏ СѓСЂРѕРІРЅСЏ РёРіСЂРѕРєСѓ
 public E_Build_Level_Menu(id,editId){
-	// отображаем список игроков, если выбранный игрок отключился
+	// РѕС‚РѕР±СЂР°Р¶Р°РµРј СЃРїРёСЃРѕРє РёРіСЂРѕРєРѕРІ, РµСЃР»Рё РІС‹Р±СЂР°РЅРЅС‹Р№ РёРіСЂРѕРє РѕС‚РєР»СЋС‡РёР»СЃСЏ
 	if(!is_user_connected(editId)){
 		E_Build_Players_Menu(id)
 				
@@ -474,35 +475,35 @@ public E_Build_Level_Menu(id,editId){
 	
 	new langStr[96],lKey[10]
 	
-	formatex(langStr,95,"%L %L",id,"AES_TAG_MENU",id,"SET_LEVEL")
+	formatex(langStr,charsmax(langStr),"%L %L",id,"AES_TAG_MENU",id,"SET_LEVEL")
 	
 	new m = menu_create(langStr,"E_Menu_Handler")
 	
-	new eStats[AES_ST_END],pageCnt = -1,pageLevel
-	aes_get_player_stats(editId,eStats)
+	new pageCnt = -1,pageLevel
+	new player_level = aes_get_player_level(editId)
 	
-	for(new i ; i < aes_get_max_level() ; ++i){
-		// считаем общее кол-во страниц
+	for(new i,max_level = aes_get_max_level() ; i < max_level ; ++i){
+		// СЃС‡РёС‚Р°РµРј РѕР±С‰РµРµ РєРѕР»-РІРѕ СЃС‚СЂР°РЅРёС†
 		if(!(i % 7))
 			pageCnt ++
 		
 		langStr[0] = 0
-		aes_get_level_name(i,langStr,95,id)
+		aes_get_level_name(i,langStr,charsmax(langStr),id)
 		
 		new lvl = i - 1
 		
-		if(eStats[AES_ST_LEVEL] != i){
-			formatex(langStr,95,"%s \r[\y%d\r]",langStr,lvl > -1 ? aes_get_exp_to_next_level(lvl) : 0)
+		if(player_level != i){
+			formatex(langStr,charsmax(langStr),"%s \r[\y%s\r]",langStr,Get_ValuevStr(aes_get_level_reqexp(lvl)))
 		}else{
-			// запоминаем страницу уровня игрока
+			// Р·Р°РїРѕРјРёРЅР°РµРј СЃС‚СЂР°РЅРёС†Сѓ СѓСЂРѕРІРЅСЏ РёРіСЂРѕРєР°
 			
 			pageLevel = pageCnt
-			formatex(langStr,95,"%s \r[\y%d\r] %L",
-				langStr,lvl > -1 ? aes_get_exp_to_next_level(lvl) : 0,
+			formatex(langStr,charsmax(langStr),"%s \r[\y%s\r] %L",
+				langStr,Get_ValuevStr(aes_get_level_reqexp(lvl)),
 				id,"CUR_LEVEL")
 		}
 		
-		formatex(lKey,9,"s%d#%d",editId,i)
+		formatex(lKey,charsmax(lKey),"s%d#%d",editId,i)
 		
 		menu_additem(m,langStr,lKey)
 	}
@@ -524,7 +525,7 @@ public V_Load_Exp_Vals(){
 			ePos = strfind(expString[stPos]," ")
 			
 			formatex(rawPoint,ePos,expString[stPos])
-			ArrayPushCell(g_ExpsVals,str_to_num(rawPoint))
+			ArrayPushCell(g_ExpsVals,floatstr(rawPoint))
 			
 			stPos += ePos + 1
 		} while (ePos != -1)
@@ -535,7 +536,7 @@ public E_Menu_Handler(id,m,item){
 	if(item == MENU_EXIT){
 		menu_destroy(m)
 		
-		// открываем последнее меню
+		// РѕС‚РєСЂС‹РІР°РµРј РїРѕСЃР»РµРґРЅРµРµ РјРµРЅСЋ
 		switch(g_MenuStatus[id][MENU_CURRENT]){
 			case MID_ACT: E_Build_Players_Menu(id)
 			case MID_ADD_EXP,MID_SET_LEVEL,MID_SET_BONUSES: E_Build_Action_Menu(id,g_MenuStatus[id][MENU_EDITID])
@@ -550,30 +551,30 @@ public E_Menu_Handler(id,m,item){
 	menu_item_getinfo(m,item,a,itemData,19,n,1,a)
 	
 	switch(itemData[0]){
-		case 'l':{ // отображаем меню действий над выбраным игроком
+		case 'l':{ // РѕС‚РѕР±СЂР°Р¶Р°РµРј РјРµРЅСЋ РґРµР№СЃС‚РІРёР№ РЅР°Рґ РІС‹Р±СЂР°РЅС‹Рј РёРіСЂРѕРєРѕРј
 			E_Build_Action_Menu(id,str_to_num(itemData[1]))
 		}
-		case 'e':{ // выполняем выбраное действие
+		case 'e':{ // РІС‹РїРѕР»РЅСЏРµРј РІС‹Р±СЂР°РЅРѕРµ РґРµР№СЃС‚РІРёРµ
 			new SeKey[2],SeEditId[3]
 			
-			// разбераем информацию пункта меню
+			// СЂР°Р·Р±РµСЂР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РїСѓРЅРєС‚Р° РјРµРЅСЋ
 			strtok(itemData[1],SeKey,1,SeEditId,2,'#')
 			
-			new eKey = str_to_num(SeKey) // узнаем ID действия
-			new editId = str_to_num(SeEditId) // узнаем ID игрока
+			new eKey = str_to_num(SeKey) // СѓР·РЅР°РµРј ID РґРµР№СЃС‚РІРёСЏ
+			new editId = str_to_num(SeEditId) // СѓР·РЅР°РµРј ID РёРіСЂРѕРєР°
 			
 			switch(eKey){
-				// меню добавить/отнять опыт
+				// РјРµРЅСЋ РґРѕР±Р°РІРёС‚СЊ/РѕС‚РЅСЏС‚СЊ РѕРїС‹С‚
 				case 1,2: E_Build_Exp_Menu(id,editId,eKey == 1 ? false : true)
-				case 3:{ // указываем опыт вручную
+				case 3:{ // СѓРєР°Р·С‹РІР°РµРј РѕРїС‹С‚ РІСЂСѓС‡РЅСѓСЋ
 					g_MenuStatus[id][MENU_SETMODE] = M_SET_EXP
 					g_MenuStatus[id][MENU_EDITID] = editId
 					
 					client_cmd(id,"messagemode caes_exp_menu_set")
 				}
-				// задаем уровень игроку
+				// Р·Р°РґР°РµРј СѓСЂРѕРІРµРЅСЊ РёРіСЂРѕРєСѓ
 				case 4: E_Build_Level_Menu(id,editId)
-				// задаем бонусы игроку
+				// Р·Р°РґР°РµРј Р±РѕРЅСѓСЃС‹ РёРіСЂРѕРєСѓ
 				case 5:{
 					g_MenuStatus[id][MENU_SETMODE] = M_SET_BONUSES
 					g_MenuStatus[id][MENU_EDITID] = editId
@@ -583,14 +584,14 @@ public E_Menu_Handler(id,m,item){
 			}
 			
 		}
-		case 'd':{ // добавляем или отнимаем опыт
+		case 'd':{ // РґРѕР±Р°РІР»СЏРµРј РёР»Рё РѕС‚РЅРёРјР°РµРј РѕРїС‹С‚
 			new SeEditId[3],SeVal[20]
 			
 			strtok(itemData[1],SeEditId,2,SeVal,19,'#')
 			
 			new editId = str_to_num(SeEditId)
 			
-			// задаем опыт вручную
+			// Р·Р°РґР°РµРј РѕРїС‹С‚ РІСЂСѓС‡РЅСѓСЋ
 			if(contain(SeVal,"self") != -1){
 				g_MenuStatus[id][MENU_SETMODE] = SeVal[0] != '-' ? M_ADD_EXP : M_SUB_EXP
 				g_MenuStatus[id][MENU_EDITID] = editId
@@ -600,34 +601,50 @@ public E_Menu_Handler(id,m,item){
 				return PLUGIN_HANDLED
 			}
 			
-			new val = str_to_num(SeVal)
+			new Float:val = floatstr(SeVal)
 			
-			aes_add_player_exp(editId,val,1)
+			aes_set_player_exp(editId,
+				floatadd(
+					aes_get_player_exp(editId),
+					val
+				) 
+				,.force = true
+			)
 			
-			// показываем меню действий снова
+			// РїРѕРєР°Р·С‹РІР°РµРј РјРµРЅСЋ РґРµР№СЃС‚РІРёР№ СЃРЅРѕРІР°
 			E_Build_Action_Menu(id,editId)
 			A_Chat_Msg(id,editId,SeVal[0] != '-' ? M_ADD_EXP : M_SUB_EXP,val)
 		}
-		case 's':{ // установка уровня
+		case 's':{ // СѓСЃС‚Р°РЅРѕРІРєР° СѓСЂРѕРІРЅСЏ
 			new SeEditId[3],SeVal[20]
 			
 			strtok(itemData[1],SeEditId,2,SeVal,19,'#')
 			
 			new editId = str_to_num(SeEditId)
-			new stats[3] = -1
-			
-			stats[AES_ST_EXP] = -1
-			stats[AES_ST_LEVEL] = str_to_num(SeVal)
-			stats[AES_ST_BONUSES] = -1
-			
-			aes_set_player_stats(editId,stats)
+			aes_set_player_level(editId,str_to_num(SeVal),.force =  true)
 			
 			E_Build_Level_Menu(id,editId)
-			A_Chat_Msg(id,editId,M_SET_LEVEL,stats[AES_ST_LEVEL])
+			A_Chat_Msg(id,editId,M_SET_LEVEL,aes_get_player_level(editId))
 		}
 	}
 	
 	return PLUGIN_HANDLED
 }
 
-// я устал писать комментарии ._.
+Get_ValuevStr(Float:val)
+{
+	new str[10]
+	
+	if(floatfract(val))
+	{
+		formatex(str,charsmax(str),"%.2f",_:val >= 0 ? val + 0.005 : val - 0.005)
+	}
+	else
+	{
+		formatex(str,charsmax(str),"%.0f",val)
+	}
+	
+	return str
+}
+
+// СЏ СѓСЃС‚Р°Р» РїРёСЃР°С‚СЊ РєРѕРјРјРµРЅС‚Р°СЂРёРё ._.

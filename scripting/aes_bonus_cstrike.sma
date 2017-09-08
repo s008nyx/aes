@@ -8,174 +8,181 @@
 */
 
 #include <amxmodx>
-#include <cstrike>
-#include <hamsandwich>
-#include <fakemeta_util>
 
-#include <colorchat>
+#if AMXX_VERSION_NUM < 183
+	#include <colorchat>
+	
+	#define print_team_default DontChange
+	#define print_team_grey Grey
+	#define print_team_red Red
+	#define print_team_blue Blue
+	
+	#define MAX_NAME_LENGTH	32
+	#define MAX_PLAYERS 32
+	
+	#define client_disconnected client_disconnect
+#endif
 
-#include <aes_main>
+#include <aes_v>
+#include <engine>
+#include <reapi>
 
 #define PLUGIN "AES: Bonus CSTRIKE"
-#define VERSION "0.4"
+#define VERSION "0.5.1 Vega[REAPI]"
 #define AUTHOR "serfreeman1337"
 
-// биты? да это же круто!
-enum _:{
+// Р±РёС‚С‹? РґР° СЌС‚Рѕ Р¶Рµ РєСЂСѓС‚Рѕ!
+enum _:
+{
 	SUPER_NICHEGO,
 	SUPER_NADE,
 	SUPER_DEAGLE
 }
 
-new g_players[33],g_maxplayers
-new bonusEnablePointer,firstRoundPointer,aNewUseTime,buyTimePointer
-new bool:st
+new g_PlayerPos[33], g_iSyncMsg, g_iSyncMsg2, g_ModeDam[33]
+new const Float:g_flCoords[][] = { {0.55, 0.55}, {0.5, 0.55}, {0.55, 0.5}, {0.45, 0.5}, {0.45, 0.45}, {0.5, 0.45}, {0.55, 0.45}, {0.45, 0.55} }
+new g_players[MAX_PLAYERS + 1],g_maxplayers
+new bool: g_PointDam[33] = false
 
-new HamHook: hamSpawn
-
-new iRound
-new Float:g_fBuyTime[33]
-
-public plugin_init(){
+public plugin_init()
+{
 	register_plugin(PLUGIN, VERSION, AUTHOR)
 	
-	hamSpawn = RegisterHam(Ham_Spawn,"player","On_Player_Spawn")
-	RegisterHam(Ham_Killed,"player","On_Player_Killed")
-	RegisterHam(Ham_TakeDamage,"player","On_Player_TakeDamage")
-	
-	firstRoundPointer = register_cvar("aes_bonus_firstround","3")
-	aNewUseTime = register_cvar("aes_bonus_time","-1.0")
-	
-	register_logevent("RoundStart",2,"0=World triggered","1=Round_Start")
-	register_logevent("RoundRestart",2,"0=World triggered","1=Game_Commencing")
-	register_event("TextMsg","RoundRestart","a","2&#Game_will_restart_in")
-	
+	RegisterHookChain(RG_CBasePlayer_TakeDamage, "CBasePlayer_TakeDamage_Post", false)
+	RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true)
+	register_event ("Damage", "EventDamage", "b", "2!0")
 	g_maxplayers = get_maxplayers()
+	
+	g_iSyncMsg = CreateHudSyncObj()
+	g_iSyncMsg2 = CreateHudSyncObj()
 }
 
-public RoundRestart(){
-	if(!st)
-		return
-		
-	iRound = 0
-	
-	set_pcvar_num(bonusEnablePointer,0)
+public client_disconnected(id)
+{
+	g_players[id] = SUPER_NICHEGO // СЃР±СЂР°СЃС‹РІР°РµРј РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё РЅР° РґРёСЃРєРѕРЅРЅРµРєС‚Рµ
 }
 
-public RoundStart(){
-	if(!st)
-		return
-		
-	iRound ++
+public CBasePlayer_Killed_Post(const victim, const killer)
+	g_players[victim] = SUPER_NICHEGO // СЃР±СЂР°СЃС‹РІР°РµРј РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё РїСЂРё СЃРјРµСЂС‚Рё
+
+public CBasePlayer_TakeDamage_Post(const id, idinflictor, idattacker, Float:damage){
+	new Float:dmg = damage
 	
-	if(iRound < get_pcvar_num(firstRoundPointer))
-		set_pcvar_num(bonusEnablePointer,0)
-	else{
-		set_pcvar_num(bonusEnablePointer,1)
-	}
-}
-
-public plugin_cfg(){
-	bonusEnablePointer = get_cvar_pointer("aes_bonus_enable")
-	buyTimePointer = get_cvar_pointer("mp_buytime")
-	
-	if(get_pcvar_float(aNewUseTime) > 0.0)
-		buyTimePointer = aNewUseTime
-	else if(get_pcvar_float(aNewUseTime) == 0.0){
-		buyTimePointer = 0
-		DisableHamForward(hamSpawn)
-	}
-	
-	if(!bonusEnablePointer){
-		log_amx("get cvar pointer fail for ^"aes_bonus_enable^"")
-		set_fail_state("get cvar pointer fail")
-	}
-	
-	st = get_pcvar_num(bonusEnablePointer) == 1 ? true : false
-}
-
-public aes_on_anew_command(id){
-	if(iRound < get_pcvar_num(firstRoundPointer)){
-		client_print_color(id,0,"%L %L",id,"AES_TAG",id,"AES_ANEW_ROUND",get_pcvar_num(firstRoundPointer))
-		
-		return PLUGIN_HANDLED
-	}
-	
-	return PLUGIN_CONTINUE
-}
-
-public client_disconnect(id){
-	g_fBuyTime[id] = 0.0
-	g_players[id] = SUPER_NICHEGO // сбрасываем возможности на дисконнекте
-}
-
-public On_Player_Spawn(id)
-	g_fBuyTime[id] = get_gametime() + 60 * get_pcvar_float(buyTimePointer)
-
-public On_Player_Killed(id)
-	g_players[id] = SUPER_NICHEGO // сбрасываем возможности при смерти
-
-public On_Player_TakeDamage(victim,idinflictor,idattacker,Float:damage,damagebits){
 	if(!idattacker || idattacker > g_maxplayers)
-		return HAM_IGNORED
+		return HC_CONTINUE
 	
-	if(!g_players[idattacker])
-		return HAM_IGNORED
-	
-	if(0 < idinflictor <= g_maxplayers){
-		new wp = get_user_weapon(idattacker)
-		
-		if(wp == CSW_DEAGLE && (g_players[idattacker] & (1 << SUPER_DEAGLE)))
-			SetHamParamFloat(4,damage * 2.0)
-		}else{
-		new classname[32]
-		pev(idinflictor,pev_classname,classname,31)
-		
-		if(!strcmp(classname,"grenade") && (g_players[idattacker] & (1 << SUPER_NADE))){
-			set_task(0.5,"deSetNade",idattacker)
-			
-			SetHamParamFloat(4,damage * 3.0)
+	if(g_players[idattacker])
+	{	
+	if(idattacker == idinflictor && get_member(get_member(idattacker, m_pActiveItem), m_iId) == WEAPON_DEAGLE && (g_players[idattacker] & (1 << SUPER_DEAGLE))){
+		dmg = damage * 2.0
+	}
+	else if(FClassnameIs(idinflictor, "grenade") && (g_players[idattacker] & (1 << SUPER_NADE))){
+		set_task(0.5,"deSetNade",idattacker)
+		dmg = damage * 3.0
+	}
+	SetHookChainArg(4, ATYPE_FLOAT, dmg)
+	}
+	return HC_CONTINUE
+}
+
+public EventDamage(iVictim)
+{
+	static iKiller;
+	iKiller = get_user_attacker(iVictim);
+	if(!iVictim || iVictim > g_maxplayers) return;
+	if(!iKiller || iKiller > g_maxplayers) return;
+	new iPos = ++g_PlayerPos[iKiller]
+	if(iPos == sizeof(g_flCoords))
+	{
+		iPos = g_PlayerPos[iKiller] = 0
+	}
+	if (g_PointDam[iKiller] && iVictim != iKiller) 
+	{
+		if (g_ModeDam[iKiller] == 1)
+		{
+			set_hudmessage(0, 100, 200, Float:g_flCoords[iPos][0], Float:g_flCoords[iPos][1], 0, 0.0, 1.0, 0.0, 0.0)
+			ShowSyncHudMsg(iKiller, g_iSyncMsg, "%i^n", read_data(2))
+		}
+		else if (g_ModeDam[iKiller] == 2 && ent_sees_ent(iVictim, iKiller))
+		{
+			set_hudmessage(0, 100, 200, Float:g_flCoords[iPos][0], Float:g_flCoords[iPos][1], 0, 0.0, 1.0, 0.0, 0.0)
+			ShowSyncHudMsg(iKiller, g_iSyncMsg, "%i^n", read_data(2))
 		}
 	}
-	
-	return HAM_IGNORED
+	if (g_PointDam[iVictim]) 
+	{
+		set_hudmessage(200, 100, 0, Float:g_flCoords[iPos][0], Float:g_flCoords[iPos][1], 0, 0.0, 1.0, 0.0, 0.0)
+		ShowSyncHudMsg(iVictim, g_iSyncMsg2, "%i^n", read_data(2))
+	}
 }
-
-// сбарсываем множитель урона гранаты
+// СЃР±Р°СЂСЃС‹РІР°РµРј РјРЅРѕР¶РёС‚РµР»СЊ СѓСЂРѕРЅР° РіСЂР°РЅР°С‚С‹
 public deSetNade(id)
 	g_players[id] &= ~(1<<SUPER_NADE)
 
 public roundBonus_GiveDefuser(id,cnt){
 	if(!cnt)
-		return
+		return false
 	
-	if(cs_get_user_team(id) == CS_TEAM_CT)
-		cs_set_user_defuse(id)
+	if(get_member(id, m_iTeam) != TEAM_CT)
+		return false
+
+	rg_give_item(id, "item_thighpack")
+	
+	return true
 }
 
 public roundBonus_GiveNV(id,cnt){
 	if(!cnt)
-		return
+		return false
 	
-	cs_set_user_nvg(id)
+	set_member(id, m_bHasNightVision, 1)
+	
+	return true
+}
+
+public roundBonus_Dmgr(id,cnt){
+	if(!cnt || cnt <= 0)
+		return false
+	
+	g_PointDam[id] = true
+	g_ModeDam[id] = (1 < cnt <= 2) ? cnt : 1
+	
+	return true
 }
 
 public roundBonus_GiveArmor(id,cnt){
 	if(!cnt)
-		return
-	
-	switch(cnt){
-		case 1: cs_set_user_armor(id,100,CS_ARMOR_KEVLAR)
-			case 2: cs_set_user_armor(id,100,CS_ARMOR_VESTHELM)
-			default: cs_set_user_armor(id,cnt,CS_ARMOR_VESTHELM)
+	{
+		return false
 	}
+	
+	switch(cnt)
+	{
+		case 1:
+		{
+			rg_give_item(id, "item_kevlar", GT_REPLACE)
+		}
+		case 2: 
+		{
+			rg_give_item(id, "item_assaultsuit", GT_REPLACE)
+		}
+		default:
+		{
+			new Float:i_Armo = get_entvar(id, var_armorvalue)
+			rg_give_item(id, "item_assaultsuit", GT_REPLACE)
+			set_entvar(id, var_armorvalue, (float(cnt) < i_Armo) ? i_Armo : float(cnt))
+		}
+	}
+	
+	return true
 }
 
 public roundBonus_GiveHP(id,cnt){
 	if(!cnt)
-		return
+		return false
 	
-	fm_set_user_health(id,(get_user_health(id) + cnt))
+	set_entvar(id, var_health, (get_entvar(id, var_health) + float(cnt)))
+	return true
 }
 
 #define CHECK_ALIVE(%1) \
@@ -184,124 +191,104 @@ if(!is_user_alive(%1)){\
 	return 0; \
 }
 
-#define CHECK_ROUNDTIME(%1) \
-if(get_gametime() > g_fBuyTime[id] && buyTimePointer){\
-	client_print(id,print_center,"%L",id,"AES_ANEW_BUYTIME",floatround(60.0 * get_pcvar_float(buyTimePointer))); \
-	return 0; \
+public pointBonus_GiveM4a1(id)
+{
+	CHECK_ALIVE(id)
+	
+	rg_give_item(id, "weapon_m4a1", GT_REPLACE)
+	rg_set_user_bpammo(id, WEAPON_M4A1, 90)
+	
+	return true
 }
 
-public pointBonus_GiveM4a1(id){
+public pointBonus_GiveAk47(id)
+{
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
 	
-	DropWeaponSlot(id,1)
+	rg_give_item(id, "weapon_ak47", GT_REPLACE)
+	rg_set_user_bpammo(id, WEAPON_AK47, 90)
 	
-	fm_give_item(id,"weapon_m4a1")
-	cs_set_user_bpammo(id,CSW_M4A1,90)
-	
-	return 1
+	return true
 }
 
-public pointBonus_GiveAk47(id){
+public pointBonus_GiveAWP(id)
+{
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
 	
-	DropWeaponSlot(id,1)
+	rg_give_item(id, "weapon_awp", GT_REPLACE)
+	rg_set_user_bpammo(id, WEAPON_AWP, 30)
 	
-	fm_give_item(id,"weapon_ak47")
-	cs_set_user_bpammo(id,CSW_AK47,90)
-	
-	return 1
+	return true
 }
 
-public pointBonus_GiveAWP(id){
-	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
+public pointBonus_Dmgr(id)
+{
+	g_PointDam[id] = true;
 	
-	DropWeaponSlot(id,1)
-	
-	fm_give_item(id,"weapon_awp")
-	cs_set_user_bpammo(id,CSW_AWP,30)
-	
-	return 1
+	return true
 }
 
-public pointBonus_Give10000M(id){
+public pointBonus_Give10000M(id)
+{
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
 	
-	new money = cs_get_user_money(id) + 10000
-	money = clamp(money,0,16000)
-	cs_set_user_money(id,money)
+	rg_add_account(id, 10000)
 	
-	return 1
+	return true
 }
 
-public pointBonus_Set200HP(id){
+public pointBonus_Set200HP(id)
+{
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
 	
-	fm_set_user_health(id,200)
+	set_entvar(id, var_health, 200.0)
 	
-	return 1
+	return true
 }
 
-public pointBonus_GiveMegaGrenade(id){
+public pointBonus_Set200CP(id)
+{
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
+	
+	rg_give_item(id, "item_assaultsuit", GT_REPLACE)
+	set_entvar(id, var_armorvalue, 200.0)
+	
+	return true
+}
+
+public pointBonus_GiveMegaGrenade(id)
+{
+	CHECK_ALIVE(id)
 	
 	if(!user_has_weapon(id,CSW_HEGRENADE))
-		fm_give_item(id,"weapon_hegrenade")
+	{
+		rg_give_item(id, "weapon_hegrenade")
+	}
 	
 	g_players[id] |= (1<<SUPER_NADE)
 	
 	client_print_color(id,0,"%L %L",id,"AES_TAG",id,"AES_BONUS_GET_MEGAGRENADE")
 	
-	return 1
+	return true
 }
 
 public pointBonus_GiveMegaDeagle(id){
 	CHECK_ALIVE(id)
-	CHECK_ROUNDTIME(id)
 	
-	DropWeaponSlot(id,2)
-	
-	fm_give_item(id,"weapon_deagle")
-	cs_set_user_bpammo(id,CSW_DEAGLE,35) // какой максимум?
+	rg_give_item(id, "weapon_deagle", GT_REPLACE)
+	rg_set_user_bpammo(id, WEAPON_DEAGLE, 35)
 	
 	g_players[id] |= (1<<SUPER_DEAGLE)
 	
 	client_print_color(id,0,"%L %L",id,"AES_TAG",id,"AES_BONUS_GET_MEGADEAGLE")
 	
-	return 1
+	return true
 }
 
-DropWeaponSlot( iPlayer, iSlot ){
-	static const m_rpgPlayerItems = 367; // player
-	static const m_pNext = 42; // weapon_*
-	static const m_iId = 43; // weapon_*
-	
-	if( !( 1 <= iSlot <= 2 ) )	{
-		return 0;
-	}
-	
-	new iCount;
-	
-	new iEntity = get_pdata_cbase( iPlayer, ( m_rpgPlayerItems + iSlot ), 5 );
-	if( iEntity > 0 )	{
-		new iNext;
-		new szWeaponName[ 32 ];
-		
-		do	{
-			iNext = get_pdata_cbase( iEntity, m_pNext, 4 );
-			
-			if( get_weaponname( get_pdata_int( iEntity, m_iId, 4 ), szWeaponName, charsmax( szWeaponName ) ) )		{
-				engclient_cmd( iPlayer, "drop", szWeaponName );
-				
-				iCount++;
-			}
-		}	while( ( iEntity = iNext ) > 0 );
-	}
-	
-	return iCount;
+stock bool:ent_sees_ent(iEnt, iEnt2)
+{
+	static Float:fEntOrigin[3], Float:fEnt2Origin[3], Float:fResult[3];
+	entity_get_vector(iEnt, EV_VEC_origin, fEntOrigin);
+	entity_get_vector(iEnt2, EV_VEC_origin, fEnt2Origin);
+	return trace_line(iEnt, fEntOrigin, fEnt2Origin, fResult) == iEnt2;
 }
