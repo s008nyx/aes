@@ -1,7 +1,11 @@
-/*
-	Advanced Experience System
-	by serfreeman1337	http://gf.hldm.org/
-*/
+//
+//	Advanced Experience System
+//	by serfreeman1337	http://gf.hldm.org/
+//
+
+//
+// AES 0.4 BACKWARD SUPPORT
+//
 
 enum _: {
 	AES_ST_EXP,
@@ -12,138 +16,49 @@ enum _: {
 	AES_ST_END
 }
 
-/*
-	Adds experience to player.
+native aes_get_max_level()
+native aes_get_level_name(level,level_name[],len,idLang = LANG_SERVER)
 
-	@id - player id
-	@exp - experience value
-	
-	@return - 
-		0 on fail
-		1 on success
-		2 on level up
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_add_player_exp_f() instead.
+#endif
 native aes_add_player_exp(id,exp,override = 0)
 
-/*	
-	Adds bonus points to player.
-	
-	@id - player id
-	@bonus - bonus points value
-	
-	@return -
-		0 - on fail
-		1 - on success
-		2 - on overset
-*/		
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_add_player_bonus_f() instead.	
+#endif
 native aes_add_player_bonus(id,bonus)
 
-/*
-	Returns player experience stats.
-	
-	@id - player id
-	@data - array with player stats
-		data[0] - player experience
-		data[1] - player level
-		data[2] - player bonuses
-		data[3] - player next level experience
-	
-	@return - 
-		0 on fail
-		1 on success
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_get_player_*() instead.
+#endif
 native aes_get_player_stats(id,data[4])
 
-/*
-	Sets player experience stats.
-	
-	@id - player id
-	@stats - stats array
-		[0] - experience
-		[1] - level
-		[2] - bonuses
-		
-	native aes_set_player_stats(id,stats[3])
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_set_player_*() instead.
+#endif
 native aes_set_player_stats(id,stats[3])
 
-/*
-	Returns level name for level num.
-	
-	@lvlnum - player id
-	@level[] - level name output
-	@len - len
-	
-	#idLang - return level name in idLang player language
-	
-	@return -
-		0 - on fail
-		1 - on success
-*/
-native aes_get_level_name(lvlnum,level[],len,idLang = 0)
-
-/*
-	Returns experience to next level.
-	
-	@exp - exeprience
-	@return - level num
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_get_exp_level() instead.
+#endif
 native aes_get_level_for_exp(exp)
 
-/*
-	Returns max level.
-*/
-native aes_get_max_level()
-
-/*
-	Gets experience to next level for given level num.
-	
-	@lvl - level
-	
-	@return 
-		level experience on success
-		-1 on fail
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_get_level_reqexp() instead.
+#endif
 native aes_get_exp_to_next_level(lvl)
 
-/*
-	Returns offline stats for given trackIds.
-	
-	@trackIds - dynamic array with trackIds.
-	@return - dynamic array with stats for gived tackIds.
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_find_stats_thread() instead.
+#endif
 native Array:aes_get_stats(Array:trackIds)
 
-/* FORWARDS */
-
-/*
-	Called on player level up.
-*/
-forward aes_player_levelup(id,newlevel,oldlevel)
-
-/*
-	Called on player level down.
-*/
-forward aes_player_leveldown(id,newlevel,oldlevel)
-
-/* aes_bonus_system.amxx */
-
-/*
-	Called on opening anew menu.
-	return PLUGI_HANDLED if you want block menu.
-*/
+#if AMXX_VERSION_NUM >= 183
+	#pragma deprecated Use aes_get_exp_for_stats_f() instead.
+#endif
+native aes_get_exp_for_stats(stats[8],stats2[4])
 
 forward aes_on_anew_command(id)
-
-/* aes_exp_cstrike.amxx */
-
-/*
-	Returns exp value for given stats.
-	
-	stats[8] = get_user_stats
-	bprelated[4] = get_user_stats2
-	
-	@return - exp for given stats
-*/
-	
-native aes_get_exp_for_stats(stats[8],stats2[4])
+forward aes_player_levelup(id,new_level,old_level)
+forward aes_player_leveldown(id,new_level,old_level)

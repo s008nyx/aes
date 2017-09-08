@@ -2,15 +2,15 @@
 TITLE = Выберите игрока
 TITLE_ACT = Действие над
 ADD_EXP = Добавить опыт
-ADD_EXP_ITEM = Добавить \y%d\w опыта
-SUB_EXP_ITEM = Отнять \y%d\w опыта
+ADD_EXP_ITEM = Добавить \y%s\w опыта
+SUB_EXP_ITEM = Отнять \y%s\w опыта
 SUB_EXP = Отнять опыт
 SET_EXP = Задать опыт^n
 EXP_SELF = Ввести своё значение
 SET_LEVEL = Задать уровень
 SET_BONUSES = Задать бонусы
 CUR_LEVEL = \y(сейчас)
-EXP_TEXT = ^n%s^nОпыт: \y%d/%d\w^nУровень: \y%d\w [ \r%s\w ]^nБонусы: \r%d\w
+EXP_TEXT = ^n%s^nОпыт: \y%s/%s\w^nУровень: \y%d\w [ \r%s\w ]^nБонусы: \r%d\w
 
 ACT_ADD_EXP = %s добавил вам %s опыта.
 ACT_SUB_EXP = %s вычел у вас %s опыта.
@@ -22,7 +22,7 @@ ACT_ADD_EXP_S = Вы забрали %s опыта у %s.
 ACT_ADD_EXP_S = Вы выдали %s бонусов для %s.
 ACT_ADD_EXP_S = Вы установили звание %s для %s.
 
-ACT_CON_EXP = %s теперь имеет %d опыта.
+ACT_CON_EXP = %s теперь имеет %.0f опыта.
 ACT_CON_LEVEL = %s теперь %s.
 ACT_WRONG = Что-то пошло не так...
 
@@ -30,15 +30,15 @@ ACT_WRONG = Что-то пошло не так...
 TITLE = Select player
 TITLE_ACT = Edit
 ADD_EXP = Add experience
-ADD_EXP_ITEM = Add \y%d\w exp
-SUB_EXP_ITEM = Sub \y%d\w exp
+ADD_EXP_ITEM = Add \y%s\w exp
+SUB_EXP_ITEM = Sub \y%s\w exp
 SUB_EXP = Subtract experience
 SET_EXP = Set experience^n
 EXP_SELF = Input experience value
 SET_LEVEL = Set level
 SET_BONUSES = Set bonuses
 CUR_LEVEL = \y(current)
-EXP_TEXT = ^n%s^nExp: \y%d/%d\w^nLevel: \y%d\w [ \r%s\w ]^nBonuses: \r%d\w
+EXP_TEXT = ^n%s^nExp: \y%s/%s\w^nLevel: \y%d\w [ \r%s\w ]^nBonuses: \r%d\w
 
 ACT_ADD_EXP = %s added %s experience for your.
 ACT_SUB_EXP = %s substracted %s experience from you.
@@ -50,6 +50,6 @@ ACT_ADD_EXP_S = You subtract %s experience from %s.
 ACT_ADD_EXP_S = You add %s bonuses for %s.
 ACT_ADD_EXP_S = You set rank %s for %s.
 
-ACT_CON_EXP = %s is now has %d exp.
+ACT_CON_EXP = %s is now has %.0f exp.
 ACT_CON_LEVEL = %s is now %s.
 ACT_WRONG = Something is wrong...
