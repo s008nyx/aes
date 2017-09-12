@@ -718,15 +718,10 @@ public Say_Catch(id){
 	
 	trim(msg)
 	remove_quotes(msg)
-
 	if(msg[0] == '/'){
 		if(strcmp(msg[1],"rank",true) == 0)
 		{
 			return RankSay(id)
-		}
-		if(strcmp(msg[1],"hot",true) == 0 || strcmp(msg[1],"topnow",true) == 0)
-		{
-			return ShowCurrentTop(id)
 		}
 		if(containi(msg[1],"top") == 0)
 		{
@@ -734,14 +729,13 @@ public Say_Catch(id){
 			
 			return SayTop(id,str_to_num(msg))
 		}
+		if(strcmp(msg[1],"hot",true) == 0 || strcmp(msg[1],"topnow",true) == 0)
+		{
+			return ShowCurrentTop(id)
+		}
 		if(strcmp(msg[1],"rankstats",true) == 0)
 		{
 			return RankStatsSay(id,id)
-		}
-		
-		if(strcmp(msg[1],"statsme",true) == 0)
-		{
-			return StatsMeSay(id,id)
 		}
 		
 		if(strcmp(msg[1],"stats",true) == 0)
@@ -749,6 +743,12 @@ public Say_Catch(id){
 			arrayset(g_MenuStatus[id],0,2)
 			return ShowStatsMenu(id,0)
 		}
+		
+		if(strcmp(msg[1],"statsme",true) == 0)
+		{
+			return StatsMeSay(id,id)
+		}
+		
 		#if defined CSSTATSX_SQL
 		if(strcmp(msg[1],"sestats",true) == 0 || strcmp(msg[1],"history",true) == 0)
 		{
