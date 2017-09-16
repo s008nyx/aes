@@ -169,6 +169,7 @@ public roundBonus_GiveArmor(id,cnt){
 		default:
 		{
 			new Float:i_Armo = get_entvar(id, var_armorvalue)
+			//rg_set_user_armor(id, Float:(float(cnt) < i_Armo) ? i_Armo : float(cnt), ArmorType:ARMOR_VESTHELM)
 			rg_give_item(id, "item_assaultsuit", GT_REPLACE)
 			set_entvar(id, var_armorvalue, (float(cnt) < i_Armo) ? i_Armo : float(cnt))
 		}
@@ -180,8 +181,9 @@ public roundBonus_GiveArmor(id,cnt){
 public roundBonus_GiveHP(id,cnt){
 	if(!cnt)
 		return false
-	
-	set_entvar(id, var_health, (get_entvar(id, var_health) + float(cnt)))
+	new Float:i_Hp = get_entvar(id, var_health)
+	new Float:s_Hp = i_Hp + float(cnt)
+	set_entvar(id, var_health, s_Hp)
 	return true
 }
 
