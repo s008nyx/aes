@@ -181,9 +181,8 @@ public roundBonus_GiveArmor(id,cnt){
 public roundBonus_GiveHP(id,cnt){
 	if(!cnt)
 		return false
-	new Float:i_Hp = get_entvar(id, var_health)
-	new Float:s_Hp = i_Hp + float(cnt)
-	set_entvar(id, var_health, s_Hp)
+
+	set_entvar(id, var_health, (Float:get_entvar(id, var_health) + float(cnt)))
 	return true
 }
 
