@@ -5,6 +5,7 @@
 
 #include <amxmodx>
 #include <amxmisc>
+#include <aes_v>
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
@@ -73,19 +74,6 @@ enum _:player_data_struct
 	Float:PLAYER_EXP_TO_NEXT		// требуемое кол-во опыта для сл. уровня игроку
 }
 
-enum _:aes_stats_struct
-{
-	AES_S_NAME[MAX_NAME_LENGTH],
-	AES_S_STEAMID[30],
-	AES_S_IP[16],
-	
-	Float:AES_S_EXP,
-	AES_S_LEVEL,
-	AES_S_BONUS,
-	
-	AES_S_ID
-}
-
 enum _:row_ids		// столбцы таблицы
 {
 	ROW_ID,
@@ -95,14 +83,6 @@ enum _:row_ids		// столбцы таблицы
 	ROW_EXP,
 	ROW_BONUS,
 	ROW_LASTUPDATE
-}
-
-enum _:
-{
-	RT_NO,
-	RT_OK,
-	RT_LEVEL_DOWN,
-	RT_LEVEL_UP
 }
 
 new const row_names[row_ids][] = // имена столбцов
@@ -543,29 +523,29 @@ Player_SetExp(id,Float:new_exp,bool:no_forward = false,bool:force = false)
 	// статистика на паузе
 	if(get_pcvar_num(cvar[CVAR_PAUSE]) && !force)
 	{
-		return RT_NO
+		return AES_RT_NO
 	}
 	
 	// опыт не может быть отрицательным
 	if(new_exp < 0.0)
 		new_exp = 0.0
 	
-	new rt = RT_OK
+	new rt = AES_RT_YES
 	player_data[id][PLAYER_EXP] = _:new_exp
 	
 	// понижение по уровню
 	if(new_exp < player_data[id][PLAYER_EXP_TO_NEXT])
 	{
-		rt = RT_LEVEL_DOWN
+		rt = AES_RT_LEVEL_DOWN
 	}
 	// повышение по уровню
 	else if(new_exp >= player_data[id][PLAYER_EXP_TO_NEXT])
 	{
-		rt = RT_LEVEL_UP
+		rt = AES_RT_LEVEL_UP
 	}
 	
 	// расчитываем новый уровень
-	if(rt != RT_OK)
+	if(rt != AES_RT_YES)
 	{
 		new old_level = player_data[id][PLAYER_LEVEL]
 		new level = player_data[id][PLAYER_LEVEL] = Level_GetByExp(new_exp)
