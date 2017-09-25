@@ -1,10 +1,3 @@
-// *************************************************************************************//
-// Плагин загружен с  www.neugomon.ru                                                   //
-// Автор: Neygomon  [ https://neugomon.ru/members/1/ ]                                  //
-// Официальная тема поддержки: https://neugomon.ru/threads/2648/                        //
-// При копировании материала ссылка на сайт www.neugomon.ru ОБЯЗАТЕЛЬНА!                //
-// *************************************************************************************//
-
 /* 
 *	AES: Bonus System			      v. 0.5
 *	by serfreeman1337		http://gf.hldm.org/
@@ -13,27 +6,11 @@
 
 #include <amxmodx>
 
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_NAME_LENGTH	32
-	#define MAX_PLAYERS 32
-	
-	#define client_disconnected client_disconnect
-#endif
-
 #include <amxmisc>
 #include <aes_v>
 #include <reapi>
 
 #define PLUGIN "AES: Bonus System"
-#define VERSION "0.5.1 Vega[REAPI]"
-#define AUTHOR "serfreeman1337"
 
 // мы передали тебе массив в массив
 // чтобы ты мог работать с массивом пока работаешь  с массивом

@@ -6,20 +6,6 @@
 #include <amxmodx>
 #include <csx>
 
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_PLAYERS 32
-	#define MAX_NAME_LENGTH 32
-	
-	#define client_disconnected client_disconnect
-#endif
-
 #define AES			// расскомментируйте для поддержки AES (http://1337.uz/advanced-experience-system/)
 #define CSSTATSX_SQL		// расскомментируйте для поддержки CSstatsX SQL (http://1337.uz/csstatsx-sql/)
 
@@ -35,8 +21,6 @@
 #endif
 
 #define PLUGIN "AES: StatsX"
-#define VERSION "0.5.1 Vega[REAPI]"
-#define AUTHOR "serfreeman1337"
 
 /* - CVARS - */
 enum _:cvars {

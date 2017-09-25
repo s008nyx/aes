@@ -8,30 +8,7 @@
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
-#define VERSION "0.5.1 Vega[REAPI]"
-#define AUTHOR "serfreeman1337"
-#define LASTUPDATE "08, June (06), 2017"
 
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_NAME_LENGTH	32
-	#define MAX_PLAYERS	32
-	
-	#define client_disconnected client_disconnect
-	
-	new MaxClients
-#endif
-
-//
-// Основано на CSstatsX SQL
-// http://1337.uz/csstatsx-sql/
-//
 
  #pragma dynamic 32768
 

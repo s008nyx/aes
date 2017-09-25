@@ -14,19 +14,7 @@
 #define CSSTATSX_SQL		// расскомментируйте для поддержки CSstatsX SQL (http://1337.uz/csstatsx-sql/)
 
 
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_NAME_LENGTH 32
-	#define MAX_PLAYERS 32
-	
-	#define client_disconnected client_disconnect
-#endif
+
 
 #include <aes_v>
 #if defined CSSTATSX_SQL
@@ -34,8 +22,6 @@
 #endif
 
 #define PLUGIN "AES: Informer"
-#define VERSION "0.5.1 Vega[REAPI]"
-#define AUTHOR "serfreeman1337 & akella"
 
 #define PLAYER_HUD_OFFSET	86444
 

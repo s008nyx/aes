@@ -8,28 +8,11 @@
 */
 
 #include <amxmodx>
-
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_NAME_LENGTH	32
-	#define MAX_PLAYERS 32
-	
-	#define client_disconnected client_disconnect
-#endif
-
 #include <aes_v>
 #include <engine>
 #include <reapi>
 
 #define PLUGIN "AES: Bonus CSTRIKE"
-#define VERSION "0.5.1 Vega[REAPI]"
-#define AUTHOR "serfreeman1337"
 
 // биты? да это же круто!
 enum _:
