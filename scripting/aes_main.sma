@@ -10,6 +10,9 @@
 
 #define PLUGIN "Advanced Experience System"
 
+#if AMXX_VERSION_NUM < 183
+	new MaxClients
+#endif
 
  #pragma dynamic 32768
 
