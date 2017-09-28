@@ -408,17 +408,10 @@ public plugin_cfg()
 			}
 		}
 	}
-	
-	if(get_pcvar_num(cvar[CVAR_BONUS_SPAWN]) == 2)
-	{
-		if(cstrike_running())
-		{
-			register_logevent("ResetSpawn",2,"1=Round_End")
-			register_logevent("RoundStart",2,"0=World triggered","1=Round_Start")
-			register_logevent("RoundRestart",2,"0=World triggered","1=Game_Commencing")
-			register_event("TextMsg","RoundRestart","a","2&#Game_will_restart_in")
-		}
-	}
+	register_logevent("ResetSpawn",2,"1=Round_End")
+	register_logevent("RoundStart",2,"0=World triggered","1=Round_Start")
+	register_logevent("RoundRestart",2,"0=World triggered","1=Game_Commencing")
+	register_event("TextMsg","RoundRestart","a","2&#Game_will_restart_in")
 }
 
 public RoundRestart()
