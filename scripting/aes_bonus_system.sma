@@ -722,37 +722,21 @@ public aNew_MenuHandler(id,m,item){
 //	psh - пшш парень, значение в функцию передать не хочешь?
 //
 GiveBonus(itemData[itemFieldsStruct],id,count = 1,psh = 0){
-	new eItem
+	new eItem, clSize
 	switch(itemData[IB_TYPE])
 	{
 		case ITEM_GIVE:
 		{
-			if (rg_get_weapon_info(rg_get_weapon_info(itemData[IB_ITEM], WI_ID), WI_CLIP_COST) > 0)
+			clSize = (rg_get_weapon_info(rg_get_weapon_info(itemData[IB_ITEM], WI_ID), WI_GUN_CLIP_SIZE) > 0)
+			eItem = rg_give_item(id,itemData[IB_ITEM],clSize ? GT_REPLACE : GT_APPEND)
+			if(eItem)
 			{
-				if(user_has_weapon(id, rg_get_weapon_info(itemData[IB_ITEM], WI_ID)))
-					rg_remove_item(id, itemData[IB_ITEM])
-				eItem = rg_give_item(id,itemData[IB_ITEM],GT_REPLACE)
-				if(eItem)
-				{
-					rg_set_user_bpammo(id, rg_get_weapon_info(itemData[IB_ITEM], WI_ID), count)
-				}
-				else
-				{
-					client_print_color(id,print_team_default,"%L %L",id,"AES_TAG",id,"AES_ANEW_CALL_PROBLEM")
-					return false
-				}
+				rg_set_user_bpammo(id, rg_get_weapon_info(itemData[IB_ITEM], WI_ID), count)
 			}
 			else
 			{
-				if(!rg_give_item(id,itemData[IB_ITEM]))
-				{
-					client_print_color(id,print_team_default,"%L %L",id,"AES_TAG",id,"AES_ANEW_CALL_PROBLEM")
-					return false
-				}
-				else
-				{
-					rg_set_user_bpammo(id, rg_get_weapon_info(itemData[IB_ITEM], WI_ID), count)
-				}
+				client_print_color(id,print_team_default,"%L %L",id,"AES_TAG",id,"AES_ANEW_CALL_PROBLEM")
+				return false
 			}
 		}
 		case ITEM_CALL:
