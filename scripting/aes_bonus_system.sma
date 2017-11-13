@@ -727,7 +727,9 @@ GiveBonus(itemData[itemFieldsStruct],id,count = 1,psh = 0){
 	{
 		case ITEM_GIVE:
 		{
-			rg_instant_reload_weapons(id)
+			if(user_has_weapon(id, rg_get_weapon_info(itemData[IB_ITEM], WI_ID)))
+				rg_remove_item(id, itemData[IB_ITEM])
+ 
 			clSize = (rg_get_weapon_info(rg_get_weapon_info(itemData[IB_ITEM], WI_ID), WI_GUN_CLIP_SIZE) > 0)
 			eItem = rg_give_item(id,itemData[IB_ITEM],clSize ? GT_REPLACE : GT_APPEND)
 			if(eItem)
