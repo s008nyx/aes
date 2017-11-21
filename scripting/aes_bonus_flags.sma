@@ -116,11 +116,14 @@ public pointBonus_GiveFlags(id, flags[], days)
 		return 0;
 	}
 	new szAuth[25], szName[32], szPlayerEnd;
+
 	get_user_authid(id, szAuth, charsmax(szAuth));
 	get_user_name(id, szName, charsmax(szName));
 	szPlayerEnd = get_systime() + days * 86400;
+	
 	g_Data[0] = AddOne;
 	g_Data[1] = id;
+
 	formatex(g_szQuery, charsmax(g_szQuery), "INSERT INTO %s (username, access, flags, steamid, nickname, ashow, created, expired, days) VALUES ('%s', '%s', 'ce', '%s', '%s', '0', UNIX_TIMESTAMP(NOW()), '%d', '%d')", g_TableAdmins, szAuth, flags, szAuth, szName, szPlayerEnd, days);
 	SQL_ThreadQuery(g_DBTuple, "SQL_Handler", g_szQuery, g_Data, sizeof(g_Data));
 	

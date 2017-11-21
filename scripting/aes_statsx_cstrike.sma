@@ -21,6 +21,23 @@
 #endif
 
 #define PLUGIN "AES: StatsX"
+#define VERSION "0.5.5 Vega[REAPI]"
+#define AUTHOR "serfreeman1337/sonyx"
+#define LASTUPDATE "21, November (11), 2017"
+
+#if AMXX_VERSION_NUM < 183
+	#include <colorchat>
+	
+	#define print_team_default DontChange
+	#define print_team_grey Grey
+	#define print_team_red Red
+	#define print_team_blue Blue
+	
+	#define MAX_NAME_LENGTH	32
+	#define MAX_PLAYERS 32
+	
+	#define client_disconnected client_disconnect
+#endif
 
 /* - CVARS - */
 enum _:cvars {

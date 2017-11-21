@@ -2,23 +2,6 @@
 //	Advanced Experience System
 //	by serfreeman1337	http://gf.hldm.org/
 //
-#define VERSION "0.5.4 Vega[REAPI]"
-#define AUTHOR "serfreeman1337/sonyx"
-#define LASTUPDATE "16, September (09), 2017"
-
-#if AMXX_VERSION_NUM < 183
-	#include <colorchat>
-	
-	#define print_team_default DontChange
-	#define print_team_grey Grey
-	#define print_team_red Red
-	#define print_team_blue Blue
-	
-	#define MAX_NAME_LENGTH	32
-	#define MAX_PLAYERS 32
-	
-	#define client_disconnected client_disconnect
-#endif
 
 enum _:
 {

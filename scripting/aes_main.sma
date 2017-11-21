@@ -9,8 +9,23 @@
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
+#define VERSION "0.5.5 Vega[REAPI]"
+#define AUTHOR "serfreeman1337/sonyx"
+#define LASTUPDATE "21, November (11), 2017"
 
 #if AMXX_VERSION_NUM < 183
+	#include <colorchat>
+	
+	#define print_team_default DontChange
+	#define print_team_grey Grey
+	#define print_team_red Red
+	#define print_team_blue Blue
+	
+	#define MAX_NAME_LENGTH	32
+	#define MAX_PLAYERS 32
+	
+	#define client_disconnected client_disconnect
+
 	new MaxClients
 #endif
 
@@ -88,6 +103,14 @@ enum _:row_ids		// столбцы таблицы
 	ROW_LASTUPDATE
 }
 
+enum (+=1) {
+	NONE = 0,
+	MYSQL,
+	SQLITE,
+	AMX,
+	FB
+}
+
 new const row_names[row_ids][] = // имена столбцов
 {
 	"id",
@@ -102,65 +125,69 @@ new const row_names[row_ids][] = // имена столбцов
 const QUERY_LENGTH =	1472		// мой ммр, когда я катаю пати
 
 // -- ПЕРЕМЕННЫЕ --
-new player_data[MAX_PLAYERS + 1][player_data_struct]
-new cvar[cvars]
+new player_data[MAX_PLAYERS + 1][player_data_struct];
+new cvar[cvars];
 
-new tbl_name[32]
-new Handle:sql
-new cnt_sqlfail,bool:gg_sql
+new tbl_name[32];
+new Handle:sql;
+new cnt_sqlfail,bool:gg_sql;
+new g_System = NONE;
 
-new Array:levels_list
-new levels_count
-new Float:max_exp
+new Array:levels_list;
+new levels_count;
+new Float:max_exp;
 
-new FW_LevelUp,FW_LevelDown
-new dummy
+new FW_LevelUp,FW_LevelDown;
+new dummy;
 
-new flush_que[QUERY_LENGTH * 3],flush_que_len
-new const task_flush		=	11337
-new bool:is_by_stats		=	false
+new flush_que[QUERY_LENGTH * 3],flush_que_len;
+new const task_flush		=	11337;
+new bool:is_by_stats		=	false;
+
+// -- ПОДКЛЮЧЕНИЕ ЧЕРЕЗ БАН-СИСТЕМУ --
+forward amxbans_sql_initialized(Handle:sqlTuple, const dbPrefix[]);
+forward fbans_sql_connected(Handle:sqlTuple);
 
 public plugin_init()
 {
-	register_plugin(PLUGIN,VERSION,AUTHOR)
+	register_plugin(PLUGIN,VERSION,AUTHOR);
 	
-	server_print("")
-	server_print("   %s Copyright (c) 2016 %s",PLUGIN,AUTHOR)
-	server_print("   Version %s build on %s", VERSION, LASTUPDATE)
-	server_print("")
+	server_print("");
+	server_print("   %s Copyright (c) 2016 %s",PLUGIN,AUTHOR);
+	server_print("   Version %s build on %s", VERSION, LASTUPDATE);
+	server_print("");
 	
 	//
 	// Квары настройки подключения
 	//
-	cvar[CVAR_SQL_TYPE] = register_cvar("aes_sql_driver","sqlite")
-	cvar[CVAR_SQL_HOST] = register_cvar("aes_sql_host","",FCVAR_UNLOGGED|FCVAR_PROTECTED)
-	cvar[CVAR_SQL_USER] = register_cvar("aes_sql_user","",FCVAR_UNLOGGED|FCVAR_PROTECTED)
-	cvar[CVAR_SQL_PASS] = register_cvar("aes_sql_pass","",FCVAR_UNLOGGED|FCVAR_PROTECTED)
-	cvar[CVAR_SQL_DB] = register_cvar("aes_sql_name","amxx",FCVAR_UNLOGGED|FCVAR_PROTECTED)
-	cvar[CVAR_SQL_TABLE] = register_cvar("aes_sql_table","aes_stats",FCVAR_UNLOGGED|FCVAR_PROTECTED)
-	cvar[CVAR_SQL_MAXFAIL] = register_cvar("aes_sql_maxfail","10")
+	cvar[CVAR_SQL_TYPE] = register_cvar("aes_sql_driver","sqlite");
+	cvar[CVAR_SQL_HOST] = register_cvar("aes_sql_host","",FCVAR_UNLOGGED|FCVAR_PROTECTED);
+	cvar[CVAR_SQL_USER] = register_cvar("aes_sql_user","",FCVAR_UNLOGGED|FCVAR_PROTECTED);
+	cvar[CVAR_SQL_PASS] = register_cvar("aes_sql_pass","",FCVAR_UNLOGGED|FCVAR_PROTECTED);
+	cvar[CVAR_SQL_DB] = register_cvar("aes_sql_name","amxx",FCVAR_UNLOGGED|FCVAR_PROTECTED);
+	cvar[CVAR_SQL_TABLE] = register_cvar("aes_sql_table","aes_stats",FCVAR_UNLOGGED|FCVAR_PROTECTED);
+	cvar[CVAR_SQL_MAXFAIL] = register_cvar("aes_sql_maxfail","10");
 	
-	cvar[CVAR_SQL_CREATE_DB] = register_cvar("aes_sql_create_db","1")
+	cvar[CVAR_SQL_CREATE_DB] = register_cvar("aes_sql_create_db","1");
 	
-	cvar[CVAR_RANK] = register_cvar("aes_track_mode","1")
-	cvar[CVAR_RANKBOTS] = register_cvar("aes_track_bots","1")
-	cvar[CVAR_PAUSE] = register_cvar("aes_track_pause","0",FCVAR_SERVER)
+	cvar[CVAR_RANK] = register_cvar("aes_track_mode","1");
+	cvar[CVAR_RANKBOTS] = register_cvar("aes_track_bots","1");
+	cvar[CVAR_PAUSE] = register_cvar("aes_track_pause","0",FCVAR_SERVER);
 	
-	cvar[CVAR_LEVELS] = register_cvar("aes_level","0 20 40 60 100 150 200 300 400 600 1000 1500 2100 2700 3400 4200 5100 5900 7000 10000")
+	cvar[CVAR_LEVELS] = register_cvar("aes_level","0 20 40 60 100 150 200 300 400 600 1000 1500 2100 2700 3400 4200 5100 5900 7000 10000");
 
-	FW_LevelUp = CreateMultiForward("aes_player_levelup",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL)
-	FW_LevelDown = CreateMultiForward("aes_player_leveldown",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL)
+	FW_LevelUp = CreateMultiForward("aes_player_levelup",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL);
+	FW_LevelDown = CreateMultiForward("aes_player_leveldown",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL);
 	
-	register_logevent("LogEventHooK_RoundEnd", 2, "1=Round_End")
-	register_srvcmd("aes_import","ImportFromFile")
+	register_srvcmd("aes_import","ImportFromFile");
 	
-	register_dictionary("aes.txt")
+	register_dictionary("aes.txt");
 	
 	#if AMXX_VERSION_NUM < 183
-		MaxClients = get_maxplayers()
+		MaxClients = get_maxplayers();
 	#endif
 	
-	register_cvar("aes", VERSION, FCVAR_SERVER | FCVAR_SPONLY | FCVAR_UNLOGGED)
+	register_cvar("aes", VERSION, FCVAR_SERVER | FCVAR_SPONLY | FCVAR_UNLOGGED);
 }
 
 #pragma unused max_exp
@@ -170,80 +197,98 @@ public plugin_init()
 //
 public plugin_cfg()
 {
-	new cfg_path[256]
-	get_configsdir(cfg_path,charsmax(cfg_path))
+	new cfg_path[256];
+	get_configsdir(cfg_path,charsmax(cfg_path));
 	
-	server_cmd("exec %s/aes/aes.cfg",cfg_path)
-	server_exec()
+	server_cmd("exec %s/aes/aes.cfg",cfg_path);
+	server_exec();
 	
 	// парсим уровни
-	new levels_string[512],level_str[10]
-	get_pcvar_string(cvar[CVAR_LEVELS],levels_string,charsmax(levels_string))
-	levels_list = ArrayCreate(1)
+	new levels_string[512],level_str[10];
+	get_pcvar_string(cvar[CVAR_LEVELS],levels_string,charsmax(levels_string));
+	levels_list = ArrayCreate(1);
 	
 	#if AMXX_VERSION_NUM < 183
 	if(levels_string[0])
 	{
-		new e_pos,s_pos
+		new e_pos,s_pos;
 		
 		do {
-			e_pos = strfind(levels_string[s_pos]," ")
+			e_pos = strfind(levels_string[s_pos]," ");
 			
-			formatex(level_str,e_pos,levels_string[s_pos])
+			formatex(level_str,e_pos,levels_string[s_pos]);
 			
 			if(!levels_list)
-			{
-				levels_list = ArrayCreate(1)
-			}
+				levels_list = ArrayCreate(1);
 			
-			ArrayPushCell(levels_list,floatstr(level_str))
-			max_exp = floatstr(level_str)
+			ArrayPushCell(levels_list,floatstr(level_str));
+			max_exp = floatstr(level_str);
 			
-			s_pos += e_pos + 1
+			s_pos += e_pos + 1;
 		} while (e_pos != -1)
 	}
 	#else
 	while((argbreak(levels_string,level_str,charsmax(level_str),levels_string,charsmax(levels_string))) != -1)
 	{
 		if(!levels_list)
-		{
-			levels_list = ArrayCreate(1)
-		}
+			levels_list = ArrayCreate(1);
 		
-		ArrayPushCell(levels_list,floatstr(level_str))
-		max_exp = floatstr(level_str)
+		ArrayPushCell(levels_list,floatstr(level_str));
+		max_exp = floatstr(level_str);
 	}
 	#endif
 	
 	if(levels_list)
-		levels_count = ArraySize(levels_list)
+		levels_count = ArraySize(levels_list);
 	
 	// AES работает в режиме статистики по csx
 	// выключаем работу с БД
 	if(get_pcvar_num(cvar[CVAR_RANK]) == -1)
 	{
-		is_by_stats = true
-		return PLUGIN_CONTINUE
+		is_by_stats = true;
+		return PLUGIN_CONTINUE;
 	}
 	
-	new db_type[12]
-	get_pcvar_string(cvar[CVAR_SQL_TYPE],db_type,charsmax(db_type))
+	new type[12];
+	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
+	get_pcvar_string(cvar[CVAR_SQL_TYPE],type,charsmax(type));
+
 	
-	new host[128],user[64],pass[64],db[64],type[10]
-	get_pcvar_string(cvar[CVAR_SQL_HOST],host,charsmax(host))
-	get_pcvar_string(cvar[CVAR_SQL_USER],user,charsmax(user))
-	get_pcvar_string(cvar[CVAR_SQL_PASS],pass,charsmax(pass))
-	get_pcvar_string(cvar[CVAR_SQL_DB],db,charsmax(db))
-	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name))
-	get_pcvar_string(cvar[CVAR_SQL_TYPE],type,charsmax(type))
+	if(strcmp(type,"mysql") == 0)
+		g_System = MYSQL;
+	else if(strcmp(type,"sqlite") == 0)
+		g_System = SQLITE;
+	else if(strcmp(type,"bans") == 0){}
+	else
+		set_fail_state("invalid ^"aes_sql_driver^" cvar value");
+
 	
-	new query[QUERY_LENGTH]
-	
-	if(strcmp(db_type,"mysql") == 0)
+	if (g_System == MYSQL || g_System == SQLITE)
 	{
-		SQL_SetAffinity(db_type)
-		
-		formatex(query,charsmax(query),"\
+		new host[128],user[64],pass[64],db[64];
+		get_pcvar_string(cvar[CVAR_SQL_HOST],host,charsmax(host));
+		get_pcvar_string(cvar[CVAR_SQL_USER],user,charsmax(user));
+		get_pcvar_string(cvar[CVAR_SQL_PASS],pass,charsmax(pass));
+		get_pcvar_string(cvar[CVAR_SQL_DB],db,charsmax(db));
+
+		SQL_SetAffinity(type);
+		sql = SQL_MakeDbTuple(host,user,pass,db,3);
+
+		if(get_pcvar_num(cvar[CVAR_SQL_CREATE_DB]))
+			CreateTable();
+	}
+
+	return PLUGIN_CONTINUE;
+}
+
+public CreateTable()
+{
+	new sql_data[1], query[QUERY_LENGTH];
+	switch (g_System)
+	{
+		case AMX,FB,MYSQL :
+		{
+			formatex(query,charsmax(query),"\
 				CREATE TABLE IF NOT EXISTS `%s` (\
 					`%s` int(11) NOT NULL AUTO_INCREMENT,\
 					`%s` varchar(32) NOT NULL,\
@@ -256,7 +301,6 @@ public plugin_cfg()
 				);",
 				
 				tbl_name,
-				
 				row_names[ROW_ID],
 				row_names[ROW_NAME],
 				row_names[ROW_STEAMID],
@@ -264,16 +308,12 @@ public plugin_cfg()
 				row_names[ROW_EXP],
 				row_names[ROW_BONUS],
 				row_names[ROW_LASTUPDATE],
-				
 				row_names[ROW_ID]
-		)
-	}
-	else if(strcmp(db_type,"sqlite") == 0)
-	{
-		SQL_SetAffinity(db_type)
-		
-		// формируем запрос на создание таблицы
-		formatex(query,charsmax(query),"\
+			);
+		}
+		case SQLITE :
+		{
+			formatex(query,charsmax(query),"\
 				CREATE TABLE IF NOT EXISTS `%s` (\
 					`%s`	INTEGER PRIMARY KEY AUTOINCREMENT,\
 					`%s`	TEXT,\
@@ -285,7 +325,6 @@ public plugin_cfg()
 				);",
 				
 				tbl_name,
-				
 				row_names[ROW_ID],
 				row_names[ROW_NAME],
 				row_names[ROW_STEAMID],
@@ -293,50 +332,46 @@ public plugin_cfg()
 				row_names[ROW_EXP],
 				row_names[ROW_BONUS],
 				row_names[ROW_LASTUPDATE]
-		)
+		);
+		}
 	}
-	else // привет wopox
-	{
-		set_fail_state("invalid ^"aes_sql_driver^" cvar value")
-	}
-	
-	sql = SQL_MakeDbTuple(host,user,pass,db,3)
-	
-	// отправляем запрос на создание таблицы
+
+	sql_data[0] = SQL_DUMMY;
+			
+	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
+}
+
+public amxbans_sql_initialized(Handle:sqlTuple, const dbPrefix[])
+{
+	if (g_System != NONE)
+		return PLUGIN_CONTINUE;
+
+	sql = sqlTuple;
+	g_System = AMX;	
+
 	if(get_pcvar_num(cvar[CVAR_SQL_CREATE_DB]))
-	{
-		new sql_data[1]
-		sql_data[0] = SQL_DUMMY
-		
-		SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data)
-	}
-	
-	return PLUGIN_CONTINUE
+			CreateTable();
+
+	return PLUGIN_CONTINUE;
+}
+
+public fbans_sql_connected(Handle:sqlTuple)
+{
+	if (g_System != NONE)
+		return PLUGIN_CONTINUE;
+
+	sql = sqlTuple;
+	g_System = FB;
+
+	if(get_pcvar_num(cvar[CVAR_SQL_CREATE_DB]))
+			CreateTable();
+
+	return PLUGIN_CONTINUE;
 }
 
 public plugin_end()
-{
-	DB_FlushQuery()
-}
+	DB_FlushQuery();
 
-public LogEventHooK_RoundEnd()
-{
-		DB_SaveAll()
-}
-
-/*
-* сохранение статистики всех игроков
-*/
-public DB_SaveAll()
-{
-	new players[32],pnum
-	get_players(players,pnum)
-	
-	for(new i ; i < pnum ; i++)
-	{
-		DB_SavePlayerData(players[i])
-	}
-}
 //
 // Функция импорта в БД из файла stats.ini
 //
@@ -344,72 +379,68 @@ public ImportFromFile()
 {
 	if(sql == Empty_Handle)
 	{
-		log_amx("db is diabled")
-		
-		return false
+		log_amx("DB is disabled");
+		return false;
 	}
 	
-	new fPath[256],len
-	len = get_datadir(fPath,charsmax(fPath))
+	new fPath[256],len;
+	len = get_datadir(fPath,charsmax(fPath));
 		
-	len += formatex(fPath[len],charsmax(fPath) - len,"/aes/stats.ini")
+	len += formatex(fPath[len],charsmax(fPath) - len,"/aes/stats.ini");
 	
-	new f = fopen(fPath,"r")
+	new f = fopen(fPath,"r");
 	
 	if(!f)
 	{
-		log_amx("^"%s^" doesn't exists",
-			fPath)
-		
-		return false
+		log_amx("^"%s^" doesn't exists",fPath);
+		return false;
 	}
 	
-	new query[QUERY_LENGTH],sql_data[2] = SQL_DUMMY
+	new query[QUERY_LENGTH],sql_data[2] = SQL_DUMMY;
 	
 	
-	log_amx("import started")
-	log_amx("clearing ^"%s^" table",
-		tbl_name)
+	log_amx("import started");
+	log_amx("clearing ^"%s^" table",tbl_name);
 	
 	// очищаем таблицу перед началом импорта
-	formatex(query,charsmax(query),"DELETE FROM `%s` WHERE 1;",
-		tbl_name)
-	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data)
+	formatex(query,charsmax(query),"DELETE FROM `%s` WHERE 1;",tbl_name);
+
+	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
 	
-	new track_field
+	new track_field;
 	
 	// сверяем track_id
 	switch(get_pcvar_num(cvar[CVAR_RANK]))
 	{
 		case 0: // статистика по нику
 		{
-			track_field = ROW_NAME
+			track_field = ROW_NAME;
 		}
 		case 1: // статистика по steamid
 		{
-			track_field = ROW_STEAMID
+			track_field = ROW_STEAMID;
 		}
 		case 2: // статистика по ip
 		{
-			track_field = ROW_IP
+			track_field = ROW_IP;
 		}
 		default:
 		{
-			return false
+			return false;
 		}
 	}
 	
 	while(!feof(f))
 	{
-		new buffer[512]
-		fgets(f,buffer,charsmax(buffer))
-		trim(buffer)
+		new buffer[512];
+		fgets(f,buffer,charsmax(buffer));
+		trim(buffer);
 		
 		if(!buffer[0] || buffer[0] == ';')
-			continue
+			continue;
 		
-		new trackId[MAX_NAME_LENGTH * 3],userName[MAX_NAME_LENGTH * 3],sStats[4][12],import_data[31]
-		import_data[0] = SQL_IMPORT
+		new trackId[MAX_NAME_LENGTH * 3],userName[MAX_NAME_LENGTH * 3],sStats[4][12],import_data[31];
+		import_data[0] = SQL_IMPORT;
 		
 		parse(buffer,trackId,charsmax(trackId),
 			userName,charsmax(userName),
@@ -417,15 +448,15 @@ public ImportFromFile()
 			sStats[3],charsmax(sStats[]),
 			sStats[1],charsmax(sStats[]),
 			sStats[2],charsmax(sStats[])
-		)
+		);
 		
-		copy(import_data[1],charsmax(import_data) - 1,trackId)
+		copy(import_data[1],charsmax(import_data) - 1,trackId);
 		
-		mysql_escape_string(trackId,charsmax(trackId))
-		mysql_escape_string(userName,charsmax(userName))
+		mysql_escape_string(trackId,charsmax(trackId));
+		mysql_escape_string(userName,charsmax(userName));
 		
-		new lastdate[40]
-		format_time(lastdate,charsmax(lastdate),"%Y-%m-%d %H:%M:%S",str_to_num(sStats[2]))
+		new lastdate[40];
+		format_time(lastdate,charsmax(lastdate),"%Y-%m-%d %H:%M:%S",str_to_num(sStats[2]));
 		
 		// строим запрос на импорит
 		if(track_field != ROW_NAME)
@@ -446,7 +477,7 @@ public ImportFromFile()
 				str_to_float(sStats[0]),
 				str_to_num(sStats[1]),
 				lastdate
-			)
+			);
 		}
 		else
 		{
@@ -464,57 +495,51 @@ public ImportFromFile()
 				str_to_float(sStats[0]),
 				str_to_num(sStats[1]),
 				lastdate
-			)
+			);
 		}
 		
-		SQL_ThreadQuery(sql,"SQL_Handler",query,import_data,sizeof import_data)
+		SQL_ThreadQuery(sql,"SQL_Handler",query,import_data,sizeof import_data);
 	}
 	
-	sql_data[0] = SQL_IMPORTFINISH
+	sql_data[0] = SQL_IMPORTFINISH;
 	
 	// запрос при окончании импорта
-	formatex(query,charsmax(query),"SELECT COUNT(*) FROM `%s`",tbl_name)
-	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data)
+	formatex(query,charsmax(query),"SELECT COUNT(*) FROM `%s`",tbl_name);
+	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
 	
-	fclose(f)
+	fclose(f);
 	
-	return true
+	return true;
 }
 
 //
 // Загружаем статистику из БД при подключении игрока
 //
 public client_putinserver(id)
-{
-	DB_LoadPlayerData(id)
-}
+	DB_LoadPlayerData(id);
 
 //
 // Сохраняем данные на дисконнекте
 //
 public client_disconnected(id)
-{
-	DB_SavePlayerData(id)
-}
+	DB_SavePlayerData(id);
 
 //
 // Смена ника игрока
 //
 public client_infochanged(id)
 {
-	new cur_name[MAX_NAME_LENGTH],new_name[MAX_NAME_LENGTH]
-	get_user_name(id,cur_name,charsmax(cur_name))
-	get_user_info(id,"name",new_name,charsmax(new_name))
+	new cur_name[MAX_NAME_LENGTH],new_name[MAX_NAME_LENGTH];
+	get_user_name(id,cur_name,charsmax(cur_name));
+	get_user_info(id,"name",new_name,charsmax(new_name));
 	
 	if(strcmp(cur_name,new_name) != 0)
 	{
-		copy(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]),new_name)
-		mysql_escape_string(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]))
+		copy(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]),new_name);
+		mysql_escape_string(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]));
 		
 		if(get_pcvar_num(cvar[CVAR_RANK]) == 0)
-		{
-			DB_SavePlayerData(id,true)
-		}
+			DB_SavePlayerData(id,true);
 	}
 }
 
@@ -525,57 +550,43 @@ Player_SetExp(id,Float:new_exp,bool:no_forward = false,bool:force = false)
 {
 	// статистика на паузе
 	if(get_pcvar_num(cvar[CVAR_PAUSE]) && !force)
-	{
-		return AES_RT_NO
-	}
+		return AES_RT_NO;
 	
 	// опыт не может быть отрицательным
 	if(new_exp < 0.0)
-		new_exp = 0.0
+		new_exp = 0.0;
 	
-	new rt = AES_RT_YES
-	player_data[id][PLAYER_EXP] = _:new_exp
+	new rt = AES_RT_YES;
+	player_data[id][PLAYER_EXP] = _:new_exp;
 	
-	// понижение по уровню
 	if(new_exp < player_data[id][PLAYER_EXP_TO_NEXT])
-	{
-		rt = AES_RT_LEVEL_DOWN
-	}
-	// повышение по уровню
+		rt = AES_RT_LEVEL_DOWN;
 	else if(new_exp >= player_data[id][PLAYER_EXP_TO_NEXT])
-	{
-		rt = AES_RT_LEVEL_UP
-	}
+		rt = AES_RT_LEVEL_UP;
 	
 	// расчитываем новый уровень
 	if(rt != AES_RT_YES)
 	{
-		new old_level = player_data[id][PLAYER_LEVEL]
-		new level = player_data[id][PLAYER_LEVEL] = Level_GetByExp(new_exp)
-		player_data[id][PLAYER_LEVELEXP] = _:Level_GetExp(player_data[id][PLAYER_LEVEL])
-		player_data[id][PLAYER_EXP_TO_NEXT] = _:Level_GetExpToNext(player_data[id][PLAYER_LEVEL])
+		new old_level = player_data[id][PLAYER_LEVEL];
+		new level = player_data[id][PLAYER_LEVEL] = Level_GetByExp(new_exp);
+		player_data[id][PLAYER_LEVELEXP] = _:Level_GetExp(player_data[id][PLAYER_LEVEL]);
+		player_data[id][PLAYER_EXP_TO_NEXT] = _:Level_GetExpToNext(player_data[id][PLAYER_LEVEL]);
 		
 		if(!no_forward)
 		{
-			new fw
+			new fw;
 			
 			if(level > old_level)
-			{
-				fw = FW_LevelUp
-			}
+				fw = FW_LevelUp;
 			else if(level < old_level)
-			{
-				fw = FW_LevelDown
-			}
+				fw = FW_LevelDown;
 			
 			if(fw)
-			{
-				ExecuteForward(fw,dummy,id,level,old_level)
-			}
+				ExecuteForward(fw,dummy,id,level,old_level);
 		}
 	}
 	
-	return rt
+	return rt;
 }
 
 //
@@ -585,12 +596,11 @@ Player_SetBonus(id,bonus,bool:force = false)
 {	
 	// статистика на паузе
 	if(get_pcvar_num(cvar[CVAR_PAUSE]) && !force)
-	{
-		return false
-	}
+		return false;
 	
-	player_data[id][PLAYER_BONUS] = bonus
-	return true
+	player_data[id][PLAYER_BONUS] = bonus;
+
+	return true;
 }
 
 //
@@ -600,23 +610,19 @@ Player_SetLevel(id,level,bool:force = false)
 {
 	// статистика на паузе
 	if(get_pcvar_num(cvar[CVAR_PAUSE]) && !force)
-	{
-		return false
-	}
+		return false;
 	
-	new Float:exp = Level_GetExp(level)
+	new Float:exp = Level_GetExp(level);
 	
 	if(exp == -1.0)
-	{
-		return false
-	}
+		return false;
 	
-	player_data[id][PLAYER_EXP] = _:exp
-	player_data[id][PLAYER_LEVEL] = level
-	player_data[id][PLAYER_LEVELEXP] = _:Level_GetExp(player_data[id][PLAYER_LEVEL])
-	player_data[id][PLAYER_EXP_TO_NEXT] = _:Level_GetExpToNext(player_data[id][PLAYER_LEVEL])
-	
-	return true
+	player_data[id][PLAYER_EXP] = _:exp;
+	player_data[id][PLAYER_LEVEL] = level;
+	player_data[id][PLAYER_LEVELEXP] = _:Level_GetExp(player_data[id][PLAYER_LEVEL]);
+	player_data[id][PLAYER_EXP_TO_NEXT] = _:Level_GetExpToNext(player_data[id][PLAYER_LEVEL]);
+
+	return true;
 }
 
 //
@@ -628,13 +634,11 @@ Level_GetByExp(Float:exp)
 	{
 		// ищем уровень по опыту
 		if(exp < ArrayGetCell(levels_list,i))
-		{
-			return clamp(i  - 1,0,levels_count - 1)
-		}
+			return clamp(i  - 1,0,levels_count - 1);
 	}
 	
 	// возвращаем максимальный уровень
-	return levels_count - 1
+	return levels_count - 1;
 }
 
 //
@@ -642,18 +646,16 @@ Level_GetByExp(Float:exp)
 //
 Float:Level_GetExpToNext(level)
 {
-	level ++
+	level++;
 	
 	// достигнут максимальный уровень
 	if(level >= levels_count)
-	{
-		return -1.0
-	}
+		return -1.0;
 
 	// TODO: проверки
-	level = clamp(level,0,levels_count - 1)
+	level = clamp(level,0,levels_count - 1);
 	
-	return ArrayGetCell(levels_list,level)
+	return ArrayGetCell(levels_list,level);
 }
 
 //
@@ -662,9 +664,9 @@ Float:Level_GetExpToNext(level)
 Float:Level_GetExp(level)
 {
 	if(!(0 <= level < levels_count))
-		return -1.0
+		return -1.0;
 	
-	return ArrayGetCell(levels_list,level)
+	return ArrayGetCell(levels_list,level);
 }
 
 //
@@ -672,76 +674,44 @@ Float:Level_GetExp(level)
 //
 DB_LoadPlayerData(id)
 {
-	if(sql == Empty_Handle)
-	{
-		return false
-	}
+	if(sql == Empty_Handle || gg_sql)
+		return false;
+
+	if((!get_pcvar_num(cvar[CVAR_RANKBOTS]) && is_user_bot(id)) || is_user_hltv(id))
+		return false;
 	
-	// проблемы с соединением
-	if(gg_sql)
-	{
-		return false
-	}
+	arrayset(player_data[id],0,player_data_struct);
 	
-	// пропускаем HLTV
-	if(is_user_hltv(id))
-	{
-		return false
-	}
+	get_user_info(id,"name",player_data[id][PLAYER_NAME],MAX_NAME_LENGTH - 1);
+	mysql_escape_string(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]));
 	
-	// пропускаем ботов, если отключена запись статистики ботов
-	if(!get_pcvar_num(cvar[CVAR_RANKBOTS]) && is_user_bot(id))
-	{
-		return false
-	}
-	
-	arrayset(player_data[id],0,player_data_struct)
-	
-	get_user_info(id,"name",player_data[id][PLAYER_NAME],MAX_NAME_LENGTH - 1)
-	mysql_escape_string(player_data[id][PLAYER_NAME],charsmax(player_data[][PLAYER_NAME]))
-	
-	get_user_authid(id,player_data[id][PLAYER_STEAMID],charsmax(player_data[][PLAYER_STEAMID]))
-	get_user_ip(id,player_data[id][PLAYER_IP],charsmax(player_data[][PLAYER_IP]),true)
+	get_user_authid(id,player_data[id][PLAYER_STEAMID],charsmax(player_data[][PLAYER_STEAMID]));
+	get_user_ip(id,player_data[id][PLAYER_IP],charsmax(player_data[][PLAYER_IP]),true);
 	
 	// формируем SQL запрос
-	new query[QUERY_LENGTH],len,sql_data[2]
+	new query[QUERY_LENGTH],len,sql_data[2];
 	
-	sql_data[0] = SQL_LOAD
-	sql_data[1] = id
-	player_data[id][PLAYER_LOADSTATE] = LOAD_WAIT
+	sql_data[0] = SQL_LOAD;
+	sql_data[1] = id;
+	player_data[id][PLAYER_LOADSTATE] = LOAD_WAIT;
 	
-	len += formatex(query[len],charsmax(query)-len,"SELECT *")
+	len += formatex(query[len],charsmax(query)-len,"SELECT * FROM `%s` WHERE ",tbl_name);
 	
 	switch(get_pcvar_num(cvar[CVAR_RANK]))
 	{
-		case 0: // статистика по нику
-		{
-			len += formatex(query[len],charsmax(query)-len," FROM `%s` WHERE `name` = '%s'",
-				tbl_name,player_data[id][PLAYER_NAME]
-			)
-		}
-		case 1: // статистика по steamid
-		{
-			len += formatex(query[len],charsmax(query)-len," FROM `%s` WHERE `steamid` = '%s'",
-				tbl_name,player_data[id][PLAYER_STEAMID]
-			)
-		}
-		case 2: // статистика по ip
-		{
-			len += formatex(query[len],charsmax(query)-len," FROM `%s` WHERE `ip` = '%s'",
-				tbl_name,player_data[id][PLAYER_IP]
-			)
-		}
-		default:
-		{
-			return false
-		}
+		// статистика по нику
+		case 0: len += formatex(query[len],charsmax(query)-len,"`name` = '%s'",player_data[id][PLAYER_NAME]);
+		// статистика по steamid
+		case 1: len += formatex(query[len],charsmax(query)-len,"`steamid` = '%s'",player_data[id][PLAYER_STEAMID]);
+		// статистика по ip
+		case 2: len += formatex(query[len],charsmax(query)-len,"`ip` = '%s'",player_data[id][PLAYER_IP]); 
+		default: return false;
 	}
 	
 	// отправка потокового запроса
-	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data)
+	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
 	
-	return true
+	return true;
 }
 
 //
@@ -749,44 +719,32 @@ DB_LoadPlayerData(id)
 //
 DB_SavePlayerData(id,bool:reload = false)
 {
-	if(sql == Empty_Handle)
-	{
-		return false
-	}
-	
-	// проблемы с соединением
-	if(gg_sql)
-	{
-		return false
-	}
+	if(sql == Empty_Handle || gg_sql)
+		return false;
 	
 	if(player_data[id][PLAYER_LOADSTATE] < LOAD_OK && player_data[id][PLAYER_LOADSTATE] != LOAD_NEW) // игрок не загрузился
-	{
-		return false
-	}
+		return false;
 	
-	new query[QUERY_LENGTH],len
+	new query[QUERY_LENGTH],len;
 	
-	new sql_data[2]
-	sql_data[1] = id
+	new sql_data[2];
+	sql_data[1] = id;
 	
 	switch(player_data[id][PLAYER_LOADSTATE])
 	{
 		case LOAD_OK: // обновление данных
 		{
 			if(reload)
-			{
-				player_data[id][PLAYER_LOADSTATE] = LOAD_UPDATE
-			}
+				player_data[id][PLAYER_LOADSTATE] = LOAD_UPDATE;
 			
-			sql_data[0] = SQL_UPDATE
+			sql_data[0] = SQL_UPDATE;
 			
-			new to_save
+			new to_save;
 			
-			len += formatex(query[len],charsmax(query) - len,"UPDATE `%s` SET",tbl_name)
+			len += formatex(query[len],charsmax(query) - len,"UPDATE `%s` SET",tbl_name);
 			
-			new Float:diffexp = player_data[id][PLAYER_EXP] - player_data[id][PLAYER_EXPLAST]
-			new diffbonus = player_data[id][PLAYER_BONUS] - player_data[id][PLAYER_BONUSLAST]
+			new Float:diffexp = player_data[id][PLAYER_EXP] - player_data[id][PLAYER_EXPLAST];
+			new diffbonus = player_data[id][PLAYER_BONUS] - player_data[id][PLAYER_BONUSLAST];
 			
 			if(diffexp != 0.0)
 			{
@@ -794,11 +752,11 @@ DB_SavePlayerData(id,bool:reload = false)
 					row_names[ROW_EXP],
 					row_names[ROW_EXP],
 					_:diffexp >= 0 ? diffexp + 0.005 : diffexp - 0.005
-				)
+				);
 				
-				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP]
+				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP];
 				
-				to_save ++
+				to_save++;
 			}
 			
 			if(diffbonus != 0)
@@ -808,11 +766,11 @@ DB_SavePlayerData(id,bool:reload = false)
 					row_names[ROW_BONUS],
 					row_names[ROW_BONUS],
 					diffbonus
-				)
+				);
 				
-				player_data[id][PLAYER_BONUSLAST] = player_data[id][PLAYER_BONUS]
+				player_data[id][PLAYER_BONUSLAST] = player_data[id][PLAYER_BONUS];
 				
-				to_save ++
+				to_save++;
 			}
 			
 			// обновляем время последнего подключения, ник, ип и steamid
@@ -824,32 +782,28 @@ DB_SavePlayerData(id,bool:reload = false)
 				row_names[ROW_LASTUPDATE],
 				row_names[ROW_STEAMID],player_data[id][PLAYER_STEAMID],
 				row_names[ROW_IP],player_data[id][PLAYER_IP]
-			)
+			);
 			
 			if(!reload) // не обновляем ник при его смене
-			{
-				len += formatex(query[len],charsmax(query) - len,",`%s` = '%s'",
-					row_names[ROW_NAME],player_data[id][PLAYER_NAME]
-				)
-			}
+				len += formatex(query[len],charsmax(query) - len,",`%s` = '%s'",row_names[ROW_NAME],player_data[id][PLAYER_NAME]);
 			
-			len += formatex(query[len],charsmax(query) - len,"WHERE `%s` = '%d'",row_names[ROW_ID],player_data[id][PLAYER_ID])
+			len += formatex(query[len],charsmax(query) - len,"WHERE `%s` = '%d'",row_names[ROW_ID],player_data[id][PLAYER_ID]);
 			
 			if(!to_save) // нечего сохранять
 			{
 				// я обманул. азазаза
 				if(player_data[id][PLAYER_LOADSTATE] == LOAD_UPDATE)
 				{
-					player_data[id][PLAYER_LOADSTATE] = LOAD_NO
-					DB_LoadPlayerData(id)
+					player_data[id][PLAYER_LOADSTATE] = LOAD_NO;
+					DB_LoadPlayerData(id);
 				}
 				
-				return false
+				return false;
 			}
 		}
 		case LOAD_NEW: // запрос на добавление новой записи
 		{
-			sql_data[0] = SQL_INSERT
+			sql_data[0] = SQL_INSERT;
 			
 			formatex(query,charsmax(query),"INSERT INTO `%s` \
 							(`%s`,`%s`,`%s`,`%s`,`%s`)\
@@ -868,16 +822,9 @@ DB_SavePlayerData(id,bool:reload = false)
 					
 					player_data[id][PLAYER_EXP],
 					player_data[id][PLAYER_BONUS]	
-			)
+			);
 			
-			if(reload)
-			{
-				player_data[id][PLAYER_LOADSTATE] = LOAD_UPDATE
-			}
-			else
-			{
-				player_data[id][PLAYER_LOADSTATE] = LOAD_NEWWAIT
-			}
+			player_data[id][PLAYER_LOADSTATE] = (reload) ? LOAD_UPDATE : LOAD_NEWWAIT;
 		}
 	}
 	
@@ -889,34 +836,32 @@ DB_SavePlayerData(id,bool:reload = false)
 			case SQL_UPDATE:
 			{
 				// запросов достаточно, сбрасываем их
-				DB_AddQuery(query,len)
-				return true
+				DB_AddQuery(query,len);
+				return true;
 			}
 		}
 		
-		SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data)
+		SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
 	}
 	
-	return true
+	return true;
 }
 
 DB_AddQuery(query[],len)
 {
 	if((flush_que_len + len + 1) > charsmax(flush_que))
-	{
-		DB_FlushQuery()
-	}
+		DB_FlushQuery();
 	
 	flush_que_len += formatex(
 		flush_que[flush_que_len],
 		charsmax(flush_que) - flush_que_len,
 		"%s%s",flush_que_len ? ";" : "",
 		query
-	)
+	);
 		
 	// задание на сброс накопленных запросов
-	remove_task(task_flush)
-	set_task(0.1,"DB_FlushQuery",task_flush)
+	remove_task(task_flush);
+	set_task(0.1,"DB_FlushQuery",task_flush);
 }
 
 //
@@ -924,66 +869,60 @@ DB_AddQuery(query[],len)
 //
 public DB_FlushQuery()
 {
-	if(sql == Empty_Handle)
-	{
-		return false
-	}
-	
-	if(gg_sql)
-	{
-		return false
-	}
+	if(sql == Empty_Handle || gg_sql)
+		return false;
 	
 	if(flush_que_len)
 	{
-		new sql_data[1] = SQL_UPDATE
-		SQL_ThreadQuery(sql,"SQL_Handler",flush_que,sql_data,sizeof sql_data)
+		new sql_data[1] = SQL_UPDATE;
+		SQL_ThreadQuery(sql,"SQL_Handler",flush_que,sql_data,sizeof sql_data);
 		
-		flush_que_len = 0
+		flush_que_len = 0;
 	}
 	
-	return true
+	return true;
 }
 
 //
 // Хандлер SQL ответа
 //
-public SQL_Handler(failstate,Handle:sqlQue,err[],errNum,data[],dataSize){
+public SQL_Handler(failstate,Handle:sqlQue,err[],errNum,data[],dataSize)
+{
 	switch(failstate)
 	{
 		case TQUERY_CONNECT_FAILED: 
 		{
-			log_amx("SQL connection failed")
-			log_amx("[ %d ] %s",errNum,err)
+			log_amx("SQL connection failed");
+			log_amx("[ %d ] %s",errNum,err);
 			
-			cnt_sqlfail ++
+			cnt_sqlfail++;
 			
 			if(cnt_sqlfail >= get_pcvar_num(cvar[CVAR_SQL_MAXFAIL]) && !gg_sql)
 			{
-				log_amx("db query is disabled for this map")
-				gg_sql = true
+				log_amx("db query is disabled for this map");
+				gg_sql = true;
 			}
 			
-			return PLUGIN_HANDLED
+			return PLUGIN_HANDLED;
 		}
 		case TQUERY_QUERY_FAILED:
 		{
-			new lastQue[QUERY_LENGTH]
-			SQL_GetQueryString(sqlQue,lastQue,charsmax(lastQue)) // узнаем запрос
+			new lastQue[QUERY_LENGTH];
+			SQL_GetQueryString(sqlQue,lastQue,charsmax(lastQue)); // узнаем запрос
 			
-			log_amx("SQL query failed")
-			log_amx("[ %d ] %s",errNum,err)
-			log_amx("[ SQL ] [%s]",lastQue)
+			log_amx("SQL query failed");
+			log_amx("[ %d ] %s",errNum,err);
+			log_amx("[ SQL ] [%s]",lastQue);
 			
-			cnt_sqlfail ++
+			cnt_sqlfail++;
 			
 			if(cnt_sqlfail >= get_pcvar_num(cvar[CVAR_SQL_MAXFAIL]) && !gg_sql)
 			{
-				log_amx("db query is disabled for this map")
-				gg_sql = true
+				log_amx("db query is disabled for this map");
+				gg_sql = true;
 			}
 			
-			return PLUGIN_HANDLED
+			return PLUGIN_HANDLED;
 		}
 	}
 	
@@ -991,140 +930,132 @@ public SQL_Handler(failstate,Handle:sqlQue,err[],errNum,data[],dataSize){
 	{
 		case SQL_LOAD: // загрзука статистики игрока
 		{
-			new id = data[1]
+			new id = data[1];
 			
 			if(!is_user_connected(id))
-			{
-				return PLUGIN_HANDLED
-			}
+				return PLUGIN_HANDLED;
 			
 			if(SQL_NumResults(sqlQue)) // считываем статистику
 			{
-				player_data[id][PLAYER_LOADSTATE] = LOAD_OK
-				player_data[id][PLAYER_ID] = SQL_ReadResult(sqlQue,ROW_ID)
+				player_data[id][PLAYER_LOADSTATE] = LOAD_OK;
+				player_data[id][PLAYER_ID] = SQL_ReadResult(sqlQue,ROW_ID);
 				
-				new Float:exp
+				new Float:exp;
 				
-				SQL_ReadResult(sqlQue,ROW_EXP,exp)
-				Player_SetExp(id,exp,true,true)
+				SQL_ReadResult(sqlQue,ROW_EXP,exp);
+				Player_SetExp(id,exp,true,true);
 				
-				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP]
-				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = SQL_ReadResult(sqlQue,ROW_BONUS)	
+				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP];
+				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = SQL_ReadResult(sqlQue,ROW_BONUS);
 			}
 			else // помечаем как нового игрока
 			{
-				player_data[id][PLAYER_LOADSTATE] = LOAD_NEW
+				player_data[id][PLAYER_LOADSTATE] = LOAD_NEW;
 				
-				DB_SavePlayerData(id) // добавляем запись в базу данных
+				DB_SavePlayerData(id); // добавляем запись в базу данных
 			}
 		}
 		case SQL_INSERT:	// запись новых данных
 		{
-			new id = data[1]
+			new id = data[1];
 			
 			if(is_user_connected(id))
 			{
 				if(player_data[id][PLAYER_LOADSTATE] == LOAD_UPDATE)
 				{
-					player_data[id][PLAYER_LOADSTATE] = LOAD_NO
-					DB_LoadPlayerData(id)
+					player_data[id][PLAYER_LOADSTATE] = LOAD_NO;
+					DB_LoadPlayerData(id);
 					
-					return PLUGIN_HANDLED
+					return PLUGIN_HANDLED;
 				}
 				
-				player_data[id][PLAYER_ID] = SQL_GetInsertId(sqlQue)	// первичный ключ
-				player_data[id][PLAYER_LOADSTATE] = LOAD_OK		// данные загружены
+				player_data[id][PLAYER_ID] = SQL_GetInsertId(sqlQue);	// первичный ключ
+				player_data[id][PLAYER_LOADSTATE] = LOAD_OK;	// данные загружены
 				
-				Player_SetExp(id,player_data[id][PLAYER_EXP],true,true)
+				Player_SetExp(id,player_data[id][PLAYER_EXP],true,true);
 				
-				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP]
-				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = 0
+				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP];
+				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = 0;
 				
 				// я упрлся 0)0)0
 			}
 		}
 		case SQL_UPDATE: // обновление данных
 		{
-			new players[MAX_PLAYERS],pnum
-			get_players(players,pnum)
+			new players[MAX_PLAYERS],pnum;
+			get_players(players,pnum);
 			
 			for(new i,player ; i < pnum ; i++)
 			{
-				player = players[i]
+				player = players[i];
 				
 				if(player_data[player][PLAYER_LOADSTATE] == LOAD_UPDATE)
 				{
-					player_data[player][PLAYER_LOADSTATE] = LOAD_NO
-					
-					DB_LoadPlayerData(player)
+					player_data[player][PLAYER_LOADSTATE] = LOAD_NO;
+					DB_LoadPlayerData(player);
 				}
 			}
 		}
 		case SQL_IMPORT:
 		{
-			log_amx("imported ^"%s^" with new id ^"%d^"",
-				data[1],
-				SQL_GetInsertId(sqlQue)
-			)
+			log_amx("imported ^"%s^" with new id ^"%d^"",data[1],SQL_GetInsertId(sqlQue));
 		}
 		case SQL_IMPORTFINISH:
 		{
-			log_amx("import finished. %d entries imported.",
-				SQL_ReadResult(sqlQue,0)
-			)
+			log_amx("import finished. %d entries imported.",SQL_ReadResult(sqlQue,0));
 			
-			new players[MAX_PLAYERS],pnum
-			get_players(players,pnum)
+			new players[MAX_PLAYERS],pnum;
+			get_players(players,pnum);
 			
 			for(new i ; i < pnum ; i++)
 			{
-				DB_LoadPlayerData(players[i])
+				DB_LoadPlayerData(players[i]);
 			}
 		}
 		case SQL_GETSTATS: // aes_find_stats
 		{
-			new id = data[1]
-			new Array:aes_stats_array = ArrayCreate(aes_stats_struct)
-			new aes_stats[aes_stats_struct]
+			new id = data[1];
+			new Array:aes_stats_array = ArrayCreate(aes_stats_struct);
+			new aes_stats[aes_stats_struct];
 			
 			while(SQL_MoreResults(sqlQue))
 			{
-				SQL_ReadResult(sqlQue,ROW_NAME,aes_stats[AES_S_NAME],charsmax(aes_stats[AES_S_NAME]))
-				SQL_ReadResult(sqlQue,ROW_STEAMID,aes_stats[AES_S_STEAMID],charsmax(aes_stats[AES_S_STEAMID]))
-				SQL_ReadResult(sqlQue,ROW_IP,aes_stats[AES_S_IP],charsmax(aes_stats[AES_S_IP]))
+				SQL_ReadResult(sqlQue,ROW_NAME,aes_stats[AES_S_NAME],charsmax(aes_stats[AES_S_NAME]));
+				SQL_ReadResult(sqlQue,ROW_STEAMID,aes_stats[AES_S_STEAMID],charsmax(aes_stats[AES_S_STEAMID]));
+				SQL_ReadResult(sqlQue,ROW_IP,aes_stats[AES_S_IP],charsmax(aes_stats[AES_S_IP]));
 				
-				SQL_ReadResult(sqlQue,ROW_EXP,aes_stats[AES_S_EXP])
-				aes_stats[AES_S_LEVEL] = Level_GetByExp(aes_stats[AES_S_EXP])
-				aes_stats[AES_S_ID] = SQL_ReadResult(sqlQue,ROW_ID)
+				SQL_ReadResult(sqlQue,ROW_EXP,aes_stats[AES_S_EXP]);
+				aes_stats[AES_S_LEVEL] = Level_GetByExp(aes_stats[AES_S_EXP]);
+				aes_stats[AES_S_ID] = SQL_ReadResult(sqlQue,ROW_ID);
 				
-				ArrayPushArray(aes_stats_array,aes_stats)
+				ArrayPushArray(aes_stats_array,aes_stats);
 				
-				SQL_NextRow(sqlQue)
+				SQL_NextRow(sqlQue);
 			}
 			
 			
 			// передаваемые данные
-			new stats_size = (dataSize - 4) // почему 4? потому что не 3
-			new stats_data[32]
+			new stats_size = dataSize - 4; // почему 4? потому что не 3
+			new stats_data[32];
 			
-			for(new i ; i < (dataSize - 4) ; i++)
+			for(new i ; i < stats_size ; i++)
 			{
-				stats_data[i] = data[4 + i]
+				stats_data[i] = data[4 + i];
 			}
 			
 			// callback
 			if(callfunc_begin_i(data[3],data[2]))
 			{
-				callfunc_push_int(id)
-				callfunc_push_int(_:aes_stats_array)
-				callfunc_push_array(stats_data,stats_size)
+				callfunc_push_int(id);
+				callfunc_push_int(_:aes_stats_array);
+				callfunc_push_array(stats_data,stats_size);
 				
-				callfunc_end()
+				callfunc_end();
 			}
 		}
 	}
 	
-	return PLUGIN_HANDLED
+	return PLUGIN_HANDLED;
 }
 
 //
@@ -1140,151 +1071,129 @@ if (!(0 < %1 <= MaxClients)) \
 
 public plugin_natives()
 {
-	register_library("aes")
+	register_library("aes");
 	
-	register_native("aes_set_player_exp","_aes_set_player_exp",true)
-	register_native("aes_get_player_exp","_aes_get_player_exp",true)
-	register_native("aes_get_player_reqexp","_aes_get_player_reqexp",true)
-	register_native("aes_set_player_bonus","_aes_set_player_bonus",true)
-	register_native("aes_get_player_bonus","_aes_get_player_bonus",true)
-	register_native("aes_set_player_level","_aes_set_player_level",true)
-	register_native("aes_get_player_level","_aes_get_player_level",true)
-	register_native("aes_get_max_level","_aes_get_max_level",true)
-	register_native("aes_get_level_name","_aes_get_level_name")
-	register_native("aes_get_exp_level","_aes_get_exp_level",true)
-	register_native("aes_get_level_reqexp","_aes_get_level_reqexp",true)
-	register_native("aes_find_stats_thread","_aes_find_stats_thread")
+	register_native("aes_set_player_exp","_aes_set_player_exp",true);
+	register_native("aes_get_player_exp","_aes_get_player_exp",true);
+	register_native("aes_get_player_reqexp","_aes_get_player_reqexp",true);
+	register_native("aes_set_player_bonus","_aes_set_player_bonus",true);
+	register_native("aes_get_player_bonus","_aes_get_player_bonus",true);
+	register_native("aes_set_player_level","_aes_set_player_level",true);
+	register_native("aes_get_player_level","_aes_get_player_level",true);
+	register_native("aes_get_max_level","_aes_get_max_level",true);
+	register_native("aes_get_level_name","_aes_get_level_name");
+	register_native("aes_get_exp_level","_aes_get_exp_level",true);
+	register_native("aes_get_level_reqexp","_aes_get_level_reqexp",true);
+	register_native("aes_find_stats_thread","_aes_find_stats_thread");
 	
 	// 0.4 DEPRECATED
-	register_library("aes_main")
-	register_native("aes_add_player_exp","_aes_add_player_exp",true)
-	register_native("aes_add_player_bonus","_aes_add_player_bonus",true)
-	register_native("aes_get_stats","_aes_get_stats")
-	register_native("aes_get_player_stats","_aes_get_player_stats")
-	register_native("aes_set_player_stats","_aes_set_player_stats")
-	register_native("aes_set_level_exp","_aes_set_level_exp")
-	register_native("aes_get_level_name","_aes_get_level_name")
-	register_native("aes_get_level_for_exp","_aes_get_level_for_exp",true)
-	register_native("aes_get_exp_to_next_level","_aes_get_exp_to_next_level",true)
+	register_library("aes_main");
+	register_native("aes_add_player_exp","_aes_add_player_exp",true);
+	register_native("aes_add_player_bonus","_aes_add_player_bonus",true);
+	register_native("aes_get_stats","_aes_get_stats");
+	register_native("aes_get_player_stats","_aes_get_player_stats");
+	register_native("aes_set_player_stats","_aes_set_player_stats");
+	register_native("aes_set_level_exp","_aes_set_level_exp");
+	register_native("aes_get_level_name","_aes_get_level_name");
+	register_native("aes_get_level_for_exp","_aes_get_level_for_exp",true);
+	register_native("aes_get_exp_to_next_level","_aes_get_exp_to_next_level",true);
 }
 
 public _aes_find_stats_thread(plugin_id,params)
 {
-	if(sql == Empty_Handle)
-	{
-		return false
-	}
+	if(sql == Empty_Handle || gg_sql)
+		return false;
 	
-	if(gg_sql)
-	{
-		return false
-	}
-	
-	new callback_func[32],func_id
-	new id = get_param(1)
-	new Array:track_ids = Array:get_param(2)
-	get_string(3,callback_func,charsmax(callback_func))
-	func_id = get_func_id(callback_func,plugin_id)
+	new callback_func[32],func_id;
+	new id = get_param(1);
+	new Array:track_ids = Array:get_param(2);
+	get_string(3,callback_func,charsmax(callback_func));
+	func_id = get_func_id(callback_func,plugin_id);
 	
 	// неверно указана функция на callback
 	if(func_id == INVALID_PLUGIN_ID)
 	{
-		log_error(AMX_ERR_NATIVE,"invalid callback function ^"%s^"",callback_func)
-		return false
+		log_error(AMX_ERR_NATIVE,"invalid callback function ^"%s^"",callback_func);
+		return false;
 	}
 	
-	new stats_data[32],stats_size
+	new stats_data[32],stats_size;
 	
 	// передаваемые данные
 	if(params == 5)
 	{
-		stats_size = get_param(5)
+		stats_size = get_param(5);
 		
 		// лул
 		if(stats_size > sizeof stats_data)
 		{
-			log_error(AMX_ERR_NATIVE,"maximum data size is %d",sizeof stats_data)
-			return false
+			log_error(AMX_ERR_NATIVE,"maximum data size is %d",sizeof stats_data);
+			return false;
 		}
 		
-		get_array(4,stats_data,stats_size)
+		get_array(4,stats_data,stats_size);
 	}
 	
 	
 	
-	new length = ArraySize(track_ids)
+	new length = ArraySize(track_ids);
 	
 	// не обрабатываем пустой массив
 	if(!length)
 	{
-		log_error(AMX_ERR_NATIVE,"passed empty track_ids array")
-		return false
+		log_error(AMX_ERR_NATIVE,"passed empty track_ids array");
+		return false;
 	}
 	
 	// строим запрос
-	new query[QUERY_LENGTH],len
+	new query[QUERY_LENGTH],len;
 	
 	len += formatex(query,charsmax(query) - len,"SELECT * FROM `%s` WHERE ",
 		tbl_name
-	)
+	);
 	
 	switch(get_pcvar_num(cvar[CVAR_RANK]))
 	{
-		case 0: // статистика по нику
-		{
-			len += formatex(query[len],charsmax(query)-len,"`%s` IN(",
-				row_names[ROW_NAME]
-			)
-		}
-		case 1: // статистика по steamid
-		{
-			len += formatex(query[len],charsmax(query)-len,"`%s` IN(",
-				row_names[ROW_STEAMID]
-			)
-		}
-		case 2: // статистика по ip
-		{
-			len += formatex(query[len],charsmax(query)-len,"`%s` IN(",
-				row_names[ROW_IP]
-			)
-		}
+		case 0: len += formatex(query[len],charsmax(query)-len,"`%s` IN(",row_names[ROW_NAME]); // статистика по нику
+		case 1: len += formatex(query[len],charsmax(query)-len,"`%s` IN(",row_names[ROW_STEAMID]); // статистика по steamid
+		case 2: len += formatex(query[len],charsmax(query)-len,"`%s` IN(",row_names[ROW_IP]); // статистика по ip
 		default:
 		{
-			log_error(AMX_ERR_NATIVE,"lol retard admin")
-			return false
+			log_error(AMX_ERR_NATIVE,"lol retard admin");
+			return false;
 		}
 	}
 	
 	for(new i,id_str[MAX_NAME_LENGTH * 3] ; i < length ; i++)
 	{
-		ArrayGetString(track_ids,i,id_str,charsmax(id_str))
-		mysql_escape_string(id_str,charsmax(id_str))
+		ArrayGetString(track_ids,i,id_str,charsmax(id_str));
+		mysql_escape_string(id_str,charsmax(id_str));
 		
-		len += formatex(query[len],charsmax(query)-len,"%s'%s'",i == 0 ? "" : ",",id_str)
+		len += formatex(query[len],charsmax(query)-len,"%s'%s'",i == 0 ? "" : ",",id_str);
 	}
 	
-	len += formatex(query[len],charsmax(query)-len,")")
+	len += formatex(query[len],charsmax(query)-len,")");
 			
 	
-	new sql_data[4 + sizeof stats_data]
+	new sql_data[4 + sizeof stats_data];
 	
-	sql_data[0] = SQL_GETSTATS
-	sql_data[1] = id
-	sql_data[2] = plugin_id
-	sql_data[3] = func_id
+	sql_data[0] = SQL_GETSTATS;
+	sql_data[1] = id;
+	sql_data[2] = plugin_id;
+	sql_data[3] = func_id;
 	
 	// добавляем передаваемые данные
 	if(stats_size)
 	{
 		for(new i ; i < stats_size ; i++)
 		{
-			sql_data[4 + i] = stats_data[i]
+			sql_data[4 + i] = stats_data[i];
 		}
 	}
 	
-	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,4 + stats_size)
+	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,4 + stats_size);
 	
-	return true
+	return true;
 }
 
 public _aes_set_player_exp(id,Float:exp,bool:no_forward,bool:force)
@@ -1293,10 +1202,10 @@ public _aes_set_player_exp(id,Float:exp,bool:no_forward,bool:force)
 	
 	if(is_by_stats)
 	{
-		player_data[id][PLAYER_LOADSTATE] = LOAD_OK
+		player_data[id][PLAYER_LOADSTATE] = LOAD_OK;
 	}
 	
-	return Player_SetExp(id,exp,no_forward,force)
+	return Player_SetExp(id,exp,no_forward,force);
 }
 
 public _aes_get_player_exp(id)
@@ -1305,91 +1214,84 @@ public _aes_get_player_exp(id)
 	
 	if(player_data[id][PLAYER_LOADSTATE] != LOAD_OK)
 	{
-		return _:-1.0
+		return _:-1.0;
 	}
 	
-	return _:player_data[id][PLAYER_EXP]
+	return _:player_data[id][PLAYER_EXP];
 }
 
 public _aes_get_player_reqexp(id)
 {
 	CHECK_PLAYER(id)
-	return _:player_data[id][PLAYER_EXP_TO_NEXT]
+	return _:player_data[id][PLAYER_EXP_TO_NEXT];
 }
 
 public _aes_set_player_bonus(id,bonus,bool:force)
 {
 	CHECK_PLAYER(id)
-	return Player_SetBonus(id,bonus,force)
+	return Player_SetBonus(id,bonus,force);
 }
 
 public _aes_get_player_bonus(id)
 {
 	CHECK_PLAYER(id)
-	return player_data[id][PLAYER_BONUS]
+	return player_data[id][PLAYER_BONUS];
 }
 
 public _aes_set_player_level(id,level,bool:force)
 {
 	CHECK_PLAYER(id)
-	return Player_SetLevel(id,level,force)
+	return Player_SetLevel(id,level,force);
 }
 
 public _aes_get_player_level(id)
 {
 	CHECK_PLAYER(id)
-	return player_data[id][PLAYER_LEVEL]
+	return player_data[id][PLAYER_LEVEL];
 }
 
 public _aes_get_max_level()
-{
-	return levels_count
-}
+	return levels_count;
 
 public _aes_get_level_name(plugin,params)
 {
-	new level = get_param(1)
-	new len = get_param(3)
-	new idLang = get_param(4)
+	new level = get_param(1);
+	new len = get_param(3);
+	new idLang = get_param(4);
 	
 	if(level > levels_count)
-		level = levels_count - 1
+		level = levels_count - 1;
 		
-	new LangKey[10],levelName[64]
+	new LangKey[10],levelName[64];
 	
-	formatex(LangKey,charsmax(LangKey),"LVL_%d",level + 1)
-	len = formatex(levelName,len,"%L",idLang,LangKey)
+	formatex(LangKey,charsmax(LangKey),"LVL_%d",level + 1);
+	len = formatex(levelName,len,"%L",idLang,LangKey);
 	
-	set_string(2,levelName,len)
+	set_string(2,levelName,len);
 	
-	return len
+	return len;
 }
 
 public _aes_get_exp_level(Float:exp)
-{
-	return Level_GetByExp(exp)
-}
+	return Level_GetByExp(exp);
 
 public Float:_aes_get_level_reqexp(level)
-{
-	return Level_GetExpToNext(level)
-}
+	return Level_GetExpToNext(level);
 
 //
 // ОБРАТНАЯ СОВМЕСТИМОСТЬ С 0.4
 //
 public _aes_get_stats()
-{
-	return false
-}
+	return false;
 
-public _aes_add_player_exp(id,exp){
+public _aes_add_player_exp(id,exp)
+{
 	CHECK_PLAYER(id)
 	
 	if(!exp)
-		return 0
+		return 0;
 	
-	return Player_SetExp(id,player_data[id][PLAYER_EXP] + float(exp))
+	return Player_SetExp(id,player_data[id][PLAYER_EXP] + float(exp));
 }
 
 public _aes_add_player_bonus(id,bonus)
@@ -1397,87 +1299,68 @@ public _aes_add_player_bonus(id,bonus)
 	CHECK_PLAYER(id)
 	
 	if(!bonus)
-		return 0
+		return 0;
 	
-	return Player_SetBonus(id,player_data[id][PLAYER_BONUS] +bonus)
+	return Player_SetBonus(id,player_data[id][PLAYER_BONUS] +bonus);
 }
 
-public _aes_get_player_stats(plugin,params){
-	new id = get_param(1)
+public _aes_get_player_stats(plugin,params)
+{
+	new id = get_param(1);
 	
 	CHECK_PLAYER(id)
 	
 	if(player_data[id][PLAYER_LOADSTATE] == LOAD_NO)
-		return 0
+		return 0;
 	
-	new ret[4]
+	new ret[4];
 	
-	ret[0] = floatround(player_data[id][PLAYER_EXP])
-	ret[1] = player_data[id][PLAYER_LEVEL]
-	ret[2] = player_data[id][PLAYER_BONUS]
-	ret[3] = floatround(player_data[id][PLAYER_EXP_TO_NEXT])
+	ret[0] = floatround(player_data[id][PLAYER_EXP]);
+	ret[1] = player_data[id][PLAYER_LEVEL];
+	ret[2] = player_data[id][PLAYER_BONUS];
+	ret[3] = floatround(player_data[id][PLAYER_EXP_TO_NEXT]);
 	
-	set_array(2,ret,sizeof ret)
+	set_array(2,ret,sizeof ret);
 	
-	return 1
+	return 1;
 }
 
-public _aes_set_player_stats(plugin,params){
+public _aes_set_player_stats(plugin,params)
+{
 	if(params < 2)
 	{
-		log_error(AMX_ERR_NATIVE,"bad arguments num, expected 2, passed %d", params)
-		
-		return 0
+		log_error(AMX_ERR_NATIVE,"bad arguments num, expected 2, passed %d", params);
+		return 0;
 	}
 	
-	new id = get_param(1)
+	new id = get_param(1);
 	
 	CHECK_PLAYER(id)
 	
-	new st[3]
-	get_array(2,st,3)
+	new st[3];
+	get_array(2,st,3);
 	
 	if(st[0] > -1)
-		Player_SetExp(id,float(st[0]),true,true)
+		Player_SetExp(id,float(st[0]),true,true);
 	
 	if(st[1] > -1)
-		Player_SetLevel(id,st[1])
+		Player_SetLevel(id,st[1]);
 		
 	if(st[2] > -1)
-		Player_SetBonus(id,st[2])
+		Player_SetBonus(id,st[2]);
 	
-	return 1
+	return 1;
 }
 
 // что это за херня D:
 public _aes_set_level_exp()
-{
-	return false
-}
+	return false;
 
 public _aes_get_level_for_exp(exp)
-{
-	return Level_GetByExp(float(exp))
-}
+	return Level_GetByExp(float(exp));
 
 public _aes_get_exp_to_next_level(lvl)
-{
-	return floatround(Level_GetExpToNext(lvl))
-}
-
-public plugin_precache()
-{
-	new amxx_version[10]
-	get_amxx_verstring(amxx_version,charsmax(amxx_version))
-	    
-	if(contain(amxx_version,"1.8.1") != -1)
-	{
-		log_amx("idite nahooy")
-		
-		server_cmd("quit")
-		server_exec()
-	}
-}
+	return floatround(Level_GetExpToNext(lvl));
 
 /*********    mysql escape functions     ************/
 mysql_escape_string(dest[],len)
