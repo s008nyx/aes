@@ -16,7 +16,7 @@ enum _:
 //
 enum _:aes_stats_struct
 {
-	AES_S_NAME[MAX_NAME_LENGTH],
+	AES_S_NAME[32],
 	AES_S_STEAMID[30],
 	AES_S_IP[16],
 	

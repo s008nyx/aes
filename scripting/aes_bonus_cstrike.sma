@@ -157,11 +157,13 @@ public roundBonus_GiveArmor(id,cnt){
 	if(!cnt)
 		return false;
 	
+	new iArmor = rg_get_user_armor(id);
+	
 	switch(cnt)
 	{
-		case 1:rg_set_user_armor(id, 100, ARMOR_KEVLAR);
-		case 2:rg_set_user_armor(id, 100, ARMOR_VESTHELM);
-		default:rg_set_user_armor(id, ((cnt < rg_get_user_armor(id)) ? rg_get_user_armor(id) : cnt), ARMOR_VESTHELM);
+		case 1:rg_set_user_armor(id, (100 < iArmor) ? iArmor : 100, ARMOR_KEVLAR);
+		case 2:rg_set_user_armor(id, (100 < iArmor) ? iArmor : 100, ARMOR_VESTHELM);
+		default:rg_set_user_armor(id, (cnt < iArmor) ? iArmor : cnt, ARMOR_VESTHELM);
 	}
 	
 	return true;
