@@ -297,7 +297,8 @@ public CreateTable()
 					`%s` float NOT NULL DEFAULT '0.0',\
 					`%s` int(11) NOT NULL DEFAULT '0',\
 					`%s` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
-					PRIMARY KEY (%s)\
+					PRIMARY KEY (%s),\
+					INDEX (`%s`)\
 				);",
 				
 				tbl_name,
@@ -308,7 +309,8 @@ public CreateTable()
 				row_names[ROW_EXP],
 				row_names[ROW_BONUS],
 				row_names[ROW_LASTUPDATE],
-				row_names[ROW_ID]
+				row_names[ROW_ID],
+				row_names[get_pcvar_num(cvar[CVAR_RANK]) + 1]
 			);
 		}
 		case SQLITE :
@@ -332,7 +334,7 @@ public CreateTable()
 				row_names[ROW_EXP],
 				row_names[ROW_BONUS],
 				row_names[ROW_LASTUPDATE]
-		);
+			);
 		}
 	}
 
@@ -343,7 +345,7 @@ public CreateTable()
 
 public amxbans_sql_initialized(Handle:sqlTuple, const dbPrefix[])
 {
-	if (g_System != NONE)
+	if (g_System != NONE || is_by_stats)
 		return PLUGIN_CONTINUE;
 
 	sql = sqlTuple;
@@ -357,7 +359,7 @@ public amxbans_sql_initialized(Handle:sqlTuple, const dbPrefix[])
 
 public fbans_sql_connected(Handle:sqlTuple)
 {
-	if (g_System != NONE)
+	if (g_System != NONE || is_by_stats)
 		return PLUGIN_CONTINUE;
 
 	sql = sqlTuple;
@@ -403,7 +405,7 @@ public ImportFromFile()
 	log_amx("clearing ^"%s^" table",tbl_name);
 	
 	// очищаем таблицу перед началом импорта
-	formatex(query,charsmax(query),"DELETE FROM `%s` WHERE 1;",tbl_name);
+	formatex(query,charsmax(query),"TRUNCATE TABLE `%s`",tbl_name);
 
 	SQL_ThreadQuery(sql,"SQL_Handler",query,sql_data,sizeof sql_data);
 	
