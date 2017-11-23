@@ -998,8 +998,20 @@ public RegisterBonusItem(itemData[itemFieldsStruct],cfgBlock,line)
 			
 			switch(cfgBlock)
 			{
-				case BONUS_ITEM_SPAWN: itemArray = (!g_SpawnBonusItems) ? (g_SpawnBonusItems = ArrayCreate(itemFieldsStruct)) : g_SpawnBonusItems;
-				case BONUS_ITEM_MENU: itemArray = (!g_PointsBonusItems) ? (g_PointsBonusItems = ArrayCreate(itemFieldsStruct)) : g_PointsBonusItems;
+				case BONUS_ITEM_SPAWN: 
+				{
+					if(!g_SpawnBonusItems)
+						g_SpawnBonusItems = ArrayCreate(itemFieldsStruct);
+						
+					itemArray = g_SpawnBonusItems;
+				}
+				case BONUS_ITEM_MENU: 
+				{
+					if(!g_PointsBonusItems)
+						g_PointsBonusItems = ArrayCreate(itemFieldsStruct);
+								
+					itemArray = g_PointsBonusItems;
+				}
 			}
 					
 			if(itemArray)

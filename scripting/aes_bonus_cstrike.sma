@@ -122,7 +122,8 @@ public EventDamage(iVictim)
 public deSetNade(id)
 	g_players[id] &= ~(1<<SUPER_NADE);
 
-public roundBonus_GiveDefuser(id,cnt){
+public roundBonus_GiveDefuser(id,cnt)
+{
 	if(!cnt)
 		return false;
 	
@@ -134,7 +135,8 @@ public roundBonus_GiveDefuser(id,cnt){
 	return true;
 }
 
-public roundBonus_GiveNV(id,cnt){
+public roundBonus_GiveNV(id,cnt)
+{
 	if(!cnt)
 		return false;
 	
@@ -143,7 +145,8 @@ public roundBonus_GiveNV(id,cnt){
 	return true;
 }
 
-public roundBonus_Dmgr(id,DamagerModes:cnt){
+public roundBonus_Dmgr(id,DamagerModes:cnt)
+{
 	if(cnt <= Disable)
 		return false;
 	
@@ -153,7 +156,8 @@ public roundBonus_Dmgr(id,DamagerModes:cnt){
 	return true;
 }
 
-public roundBonus_GiveArmor(id,cnt){
+public roundBonus_GiveArmor(id,cnt)
+{
 	if(!cnt)
 		return false;
 	
@@ -161,15 +165,16 @@ public roundBonus_GiveArmor(id,cnt){
 	
 	switch(cnt)
 	{
-		case 1:rg_set_user_armor(id, (100 < iArmor) ? iArmor : 100, ARMOR_KEVLAR);
-		case 2:rg_set_user_armor(id, (100 < iArmor) ? iArmor : 100, ARMOR_VESTHELM);
-		default:rg_set_user_armor(id, (cnt < iArmor) ? iArmor : cnt, ARMOR_VESTHELM);
+		case 1:rg_set_user_armor(id, max(100, iArmor), ARMOR_KEVLAR);
+		case 2:rg_set_user_armor(id, max(100, iArmor), ARMOR_VESTHELM);
+		default:rg_set_user_armor(id, max(cnt, iArmor), ARMOR_VESTHELM);
 	}
 	
 	return true;
 }
 
-public roundBonus_GiveHP(id,cnt){
+public roundBonus_GiveHP(id,cnt)
+{
 	if(!cnt)
 		return false;
 
