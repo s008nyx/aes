@@ -5,7 +5,6 @@
 
 
 #include <amxmodx>
-
 #include <amxmisc>
 #include <aes_v>
 #include <reapi>
@@ -739,7 +738,7 @@ public aNew_MenuHandler(id,m,item)
 //	count - кол-во бонусов
 //	psh - пшш парень, значение в функцию передать не хочешь?
 //
-GiveBonus(itemData[itemFieldsStruct],id,count = 1,psh = 0)
+GiveBonus(itemData[itemFieldsStruct],id,count = 0,psh = 0)
 {
 	new wId = rg_get_weapon_info(itemData[IB_ITEM], WI_ID);
 	switch(itemData[IB_TYPE])
@@ -750,7 +749,7 @@ GiveBonus(itemData[itemFieldsStruct],id,count = 1,psh = 0)
 				rg_remove_item(id, itemData[IB_ITEM]);
 			
 			if(rg_give_item(id, itemData[IB_ITEM], (rg_get_weapon_info(wId, WI_GUN_CLIP_SIZE) > 0) ? GT_REPLACE : GT_APPEND))
-				rg_set_user_bpammo(id, WeaponIdType:wId, count);
+				rg_set_user_bpammo(id, WeaponIdType:wId, count ? count : rg_get_weapon_info(wId, WI_MAX_ROUNDS));
 			else
 			{
 				client_print_color(id,print_team_default,"%L %L",id,"AES_TAG",id,"AES_ANEW_CALL_PROBLEM");

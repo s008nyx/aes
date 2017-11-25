@@ -182,30 +182,6 @@ public roundBonus_GiveHP(id,cnt)
 	return true;
 }
 
-give_weapon(id, weaponName[])
-{
-	new WeaponIdType:wId = rg_get_weapon_info(weaponName, WI_ID);
-
-	if(!is_user_alive(id))
-	{
-		client_print_color(id,0,"%L %L",id,"AES_TAG",id,"AES_ANEW_ALIVE"); 
-		return false; 
-	}
-
-	rg_give_item(id, weaponName, GT_REPLACE);
-	rg_set_user_bpammo(id, wId, rg_get_weapon_info(wId, WI_MAX_ROUNDS));
-	
-	return true;
-}
-
-public pointBonus_GiveM4a1(id)
-	give_weapon(id, "weapon_m4a1");
-
-public pointBonus_GiveAk47(id)
-	give_weapon(id, "weapon_ak47");
-
-public pointBonus_GiveAWP(id)
-	give_weapon(id, "weapon_awp");
 
 public pointBonus_Dmgr(id)
 {
@@ -280,7 +256,9 @@ public pointBonus_GiveMegaDeagle(id){
 		return false; 
 	}
 	
-	give_weapon(id, "weapon_deagle");
+	rg_give_item(id, "weapon_deagle", GT_REPLACE);
+	rg_set_user_bpammo(id, WEAPON_DEAGLE, 35);
+
 	g_players[id] |= (1<<SUPER_DEAGLE);
 	client_print_color(id,0,"%L %L",id,"AES_TAG",id,"AES_BONUS_GET_MEGADEAGLE");
 	
