@@ -4,7 +4,6 @@
 */
 
 #include <amxmodx>
-#include <cstrike>
 #include <csx>
 #include <reapi>
 #include <aes_v>
@@ -265,7 +264,7 @@ public client_death(killer,victim,wpn,hit,TK)
 	aes_add_player_exp_f(victim,get_pcvar_float(cvar[CVAR_XP_DEATH]));
 	
 	// игрок убил VIP
-	if(isAsMap && cs_get_user_vip(victim))
+	if(isAsMap && get_member(victim,m_bIsVIP))
 	{
 		if(get_playersnum() >= get_pcvar_num(cvar[CVAR_XP_GOAL_MIN_PLAYERS]))
 			aes_add_player_exp_f(killer,get_pcvar_float(cvar[CVAR_XP_VIP_KILLED]));
