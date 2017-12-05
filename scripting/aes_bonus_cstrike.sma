@@ -70,24 +70,22 @@ public CBasePlayer_Killed_Post(const victim, const killer)
 
 public CBasePlayer_TakeDamage(const id, idinflictor, idattacker, Float:damage)
 {
-	new Float:dmg = damage;
-	
-	if(!idattacker || idattacker > MAX_PLAYERS)
+	if(!is_user_connected(idattacker))
 		return HC_CONTINUE;
 	
 	if(g_players[idattacker])
 	{	
 		if(idattacker == idinflictor && get_member(get_member(idattacker, m_pActiveItem), m_iId) == WEAPON_DEAGLE && (g_players[idattacker] & (1 << SUPER_DEAGLE)))
 		{
-			dmg = damage * 2.0;
+			damage *= 2.0;
 		}
 		else if(FClassnameIs(idinflictor, "grenade") && (g_players[idattacker] & (1 << SUPER_NADE)))
 		{
 			set_task(0.5,"deSetNade",idattacker);
-			dmg = damage * 3.0;
+			damage *= 3.0;
 		}
 		
-		SetHookChainArg(4, ATYPE_FLOAT, dmg);
+		SetHookChainArg(4, ATYPE_FLOAT, damage);
 	}
 	return HC_CONTINUE;
 }
