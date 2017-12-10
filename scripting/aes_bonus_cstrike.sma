@@ -95,7 +95,7 @@ public EventDamage(iVictim)
 	static iKiller;
 	iKiller = get_user_attacker(iVictim);
 
-	if(!iKiller) return;
+	if(!iKiller || iKiller > MAX_PLAYERS) return;
 
 	new iPos = ++g_PlayerPos[iKiller];
 
