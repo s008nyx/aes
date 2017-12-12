@@ -9,9 +9,9 @@
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
-#define VERSION "0.5.5 Vega[REAPI]"
+#define VERSION "0.5.6 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
-#define LASTUPDATE "21, November (11), 2017"
+#define LASTUPDATE "12, December (12), 2017"
 
 #if AMXX_VERSION_NUM < 183
 	#include <colorchat>
@@ -250,7 +250,6 @@ public plugin_cfg()
 	}
 	
 	new type[12];
-	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
 	get_pcvar_string(cvar[CVAR_SQL_TYPE],type,charsmax(type));
 
 	
@@ -284,6 +283,9 @@ public plugin_cfg()
 public CreateTable()
 {
 	new sql_data[1], query[QUERY_LENGTH];
+
+	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
+
 	switch (g_System)
 	{
 		case AMX,FB,MYSQL :
