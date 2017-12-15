@@ -9,9 +9,9 @@
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
-#define VERSION "0.5.6 Vega[REAPI]"
+#define VERSION "0.5.7 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
-#define LASTUPDATE "12, December (12), 2017"
+#define LASTUPDATE "15, December (12), 2017"
 
 #if AMXX_VERSION_NUM < 183
 	#include <colorchat>
@@ -269,6 +269,7 @@ public plugin_cfg()
 		get_pcvar_string(cvar[CVAR_SQL_USER],user,charsmax(user));
 		get_pcvar_string(cvar[CVAR_SQL_PASS],pass,charsmax(pass));
 		get_pcvar_string(cvar[CVAR_SQL_DB],db,charsmax(db));
+		get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
 
 		SQL_SetAffinity(type);
 		sql = SQL_MakeDbTuple(host,user,pass,db,3);
@@ -283,8 +284,6 @@ public plugin_cfg()
 public CreateTable()
 {
 	new sql_data[1], query[QUERY_LENGTH];
-
-	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
 
 	switch (g_System)
 	{
@@ -353,6 +352,8 @@ public amxbans_sql_initialized(Handle:sqlTuple, const dbPrefix[])
 	sql = sqlTuple;
 	g_System = AMX;	
 
+	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
+
 	if(get_pcvar_num(cvar[CVAR_SQL_CREATE_DB]))
 			CreateTable();
 
@@ -366,6 +367,8 @@ public fbans_sql_connected(Handle:sqlTuple)
 
 	sql = sqlTuple;
 	g_System = FB;
+
+	get_pcvar_string(cvar[CVAR_SQL_TABLE],tbl_name,charsmax(tbl_name));
 
 	if(get_pcvar_num(cvar[CVAR_SQL_CREATE_DB]))
 			CreateTable();

@@ -22,9 +22,9 @@
 #endif
 
 #define PLUGIN "AES: Informer"
-#define VERSION "0.5.6 Vega[REAPI]"
+#define VERSION "0.5.7 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
-#define LASTUPDATE "12, December (12), 2017"
+#define LASTUPDATE "15, December (12), 2017"
 
 #if AMXX_VERSION_NUM < 183
 	#include <colorchat>
