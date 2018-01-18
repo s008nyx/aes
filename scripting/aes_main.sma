@@ -9,7 +9,7 @@
 #include <sqlx>
 
 #define PLUGIN "Advanced Experience System"
-#define VERSION "0.5.7 Vega[REAPI]"
+#define VERSION "0.5.8 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
 #define LASTUPDATE "15, December (12), 2017"
 

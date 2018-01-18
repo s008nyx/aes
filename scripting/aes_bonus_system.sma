@@ -10,7 +10,7 @@
 #include <reapi>
 
 #define PLUGIN "AES: Bonus System"
-#define VERSION "0.5.7 Vega[REAPI]"
+#define VERSION "0.5.8 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
 #define LASTUPDATE "15, December (12), 2017"
 
@@ -638,6 +638,7 @@ public Format_ItemsCallback(id,menu,item)
 			formatex(lang_key,charsmax(lang_key),"AES_ANEW_INFO%d",i);
 				
 			formatex(tmpLang,charsmax(tmpLang)," %L",id,lang_key,itemData[IB_POINTS + (i - 1)]);
+			aes_get_item_name(itemData[IB_NAME],item_name,charsmax(item_name),id);
 			add(item_name,charsmax(item_name),tmpLang);
 	
 			menu_item_setname(menu,item,item_name);
@@ -740,11 +741,15 @@ public aNew_MenuHandler(id,m,item)
 //
 GiveBonus(itemData[itemFieldsStruct],id,count = 0,psh = 0)
 {
-	new wId = rg_get_weapon_info(itemData[IB_ITEM], WI_ID);
+
 	switch(itemData[IB_TYPE])
 	{
 		case ITEM_GIVE:
 		{
+			if(!is_user_alive(id)) return false;
+			
+			new wId = rg_get_weapon_info(itemData[IB_ITEM], WI_ID);
+
 			if(user_has_weapon(id, wId))
 				rg_remove_item(id, itemData[IB_ITEM]);
 			

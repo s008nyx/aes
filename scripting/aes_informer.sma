@@ -22,7 +22,7 @@
 #endif
 
 #define PLUGIN "AES: Informer"
-#define VERSION "0.5.7 Vega[REAPI]"
+#define VERSION "0.5.8 Vega[REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
 #define LASTUPDATE "15, December (12), 2017"
 
@@ -756,8 +756,20 @@ public parse_informer_tpl(id,watchId,string[],len,maxLen,tplKey[],tplType,idLang
 			switch(i)
 			{
 				case INF_EXP: formatex(tmp,charsmax(tmp),"%.0f",player_exp);
-				case INF_LEVELEXP: formatex(tmp,charsmax(tmp),"%.0f",player_reqexp);
-				case INF_NEEDEXP: formatex(tmp,charsmax(tmp),"%.0f",player_reqexp - player_exp);
+				case INF_LEVELEXP: 
+				{
+					if(player_reqexp >= 0)
+						formatex(tmp,charsmax(tmp),"%.0f",player_reqexp);
+					else
+						formatex(tmp,charsmax(tmp),"MAX");
+				}
+				case INF_NEEDEXP: 
+				{
+					if(player_reqexp >= 0)
+						formatex(tmp,charsmax(tmp),"%.0f",player_reqexp - player_exp);
+					else
+						formatex(tmp,charsmax(tmp),"-");
+				}
 				case INF_LEVEL: formatex(tmp,charsmax(tmp),"%d",player_level + 1);
 				case INF_MAXLEVEL: formatex(tmp,charsmax(tmp),"%d",aesMaxLevel);
 				case INF_RANK: 
