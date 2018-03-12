@@ -62,13 +62,15 @@ AES_BONUS_NV = Найтвижен
 AES_BONUS_ARMOR = Броня
 AES_BOUNS_HP = Хп
 
-AES_ANEW_INFO1 = \w(\r%d бон.\w)
-AES_ANEW_INFO2 = \w(\r%.2f оп.\w)
-AES_ANEW_INFO3 = \w(\r%d уров.\w)
-AES_ANEW_INFO4 = \w(\r%d рнд.\w)
-AES_ANEW_INFO5 = \w(\rвремя\w)
-AES_ANEW_INFO6 = Ваши бонусы: 
-AES_ANEW_INFO7 = и %d других.
+AES_ANEW_INFO1 = \w[\r%d бон.\w]
+AES_ANEW_INFO2 = \w[\r%.2f оп.\w]
+AES_ANEW_INFO3 = \w[\r%d уров.\w]
+AES_ANEW_INFO4 = \w[\r%d рнд.\w]
+AES_ANEW_INFO5 = \w[\rВремя\w]
+AES_ANEW_INFO6 = \w[\rНет флага\w]
+AES_ANEW_INFO7 = \w[\rЗапрешенный флаг\w]
+AES_ANEW_INFO8 = Ваши бонусы:
+AES_ANEW_INFO9 = и %d других.
 
 AES_BONUS_GET_MEGADEAGLE = Ваш ^3дигл^1 наносит в ^42.0^1 больше урона!
 AES_BONUS_GET_MEGAGRENADE = Ваша ^3граната^1 наносит в ^43.0^1 больше урона!
@@ -150,13 +152,15 @@ AES_BONUS_NV = NW
 AES_BONUS_ARMOR = Armor
 AES_BOUNS_HP = HP
 
-AES_ANEW_INFO1 = \w(\r%d bonus\w)
-AES_ANEW_INFO2 = \w(\r%.2f exp.\w)
-AES_ANEW_INFO3 = \w(\r%d lvl.\w)
-AES_ANEW_INFO4 = \w(\r%d rnd.\w)
-AES_ANEW_INFO5 = \w(\time\w)
-AES_ANEW_INFO6 = Your spawn bonuses: 
-AES_ANEW_INFO7 = and %d more.
+AES_ANEW_INFO1 = \w[\r%d bonus\w]
+AES_ANEW_INFO2 = \w[\r%.2f exp.\w]
+AES_ANEW_INFO3 = \w[\r%d lvl.\w]
+AES_ANEW_INFO4 = \w[\r%d rnd.\w]
+AES_ANEW_INFO5 = \w[\Time\w]
+AES_ANEW_INFO6 = \w[\rNeed flag\w]
+AES_ANEW_INFO7 = \w[\rRestrict flag\w]
+AES_ANEW_INFO8 = Your spawn bonuses:
+AES_ANEW_INFO9 = and %d more.
 
 AES_BONUS_GET_MEGADEAGLE = Your ^3deagle^1 now do ^42.0^1 more damage!
 AES_BONUS_GET_MEGAGRENADE = Your ^3grenade^1 now do ^4100.0^1 more damage!

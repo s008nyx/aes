@@ -14,9 +14,9 @@
 #include <aes_v>
 
 #define PLUGIN "AES: Admin Tools"
-#define VERSION "0.5.8 Vega[REAPI]"
+#define VERSION "0.5.9 [REAPI]"
 #define AUTHOR "serfreeman1337/sonyx"
-#define LASTUPDATE "15, December (12), 2017"
+#define LASTUPDATE "12, March (03), 2018"
 
 #if AMXX_VERSION_NUM < 183
 	#include <colorchat>
