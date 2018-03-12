@@ -136,7 +136,7 @@ new Array:levels_list;
 new levels_count;
 new Float:max_exp;
 
-new FW_LevelUp,FW_LevelDown;
+new FW_LevelUp, FW_LevelDown, FW_PlConnect;
 new dummy;
 
 new flush_que[QUERY_LENGTH * 3],flush_que_len;
@@ -177,6 +177,7 @@ public plugin_init()
 
 	FW_LevelUp = CreateMultiForward("aes_player_levelup",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL);
 	FW_LevelDown = CreateMultiForward("aes_player_leveldown",ET_IGNORE,FP_CELL,FP_CELL,FP_CELL);
+	FW_PlConnect = CreateMultiForward("aes_player_connect",ET_IGNORE,FP_CELL);
 
 	register_srvcmd("aes_import","ImportFromFile");
 
@@ -941,6 +942,8 @@ public SQL_Handler(failstate,Handle:sqlQue,err[],errNum,data[],dataSize)
 
 				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP];
 				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = SQL_ReadResult(sqlQue,ROW_BONUS);
+
+				ExecuteForward(FW_PlConnect,dummy,id);
 			}
 			else // помечаем как нового игрока
 			{
@@ -970,6 +973,8 @@ public SQL_Handler(failstate,Handle:sqlQue,err[],errNum,data[],dataSize)
 
 				player_data[id][PLAYER_EXPLAST] = _:player_data[id][PLAYER_EXP];
 				player_data[id][PLAYER_BONUS] = player_data[id][PLAYER_BONUSLAST] = 0;
+
+				ExecuteForward(FW_PlConnect,dummy,id);
 
 				// я упрлся 0)0)0
 			}

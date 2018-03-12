@@ -145,9 +145,28 @@ native Float:aes_get_level_reqexp(level);
 * @param data[]			custom data
 * @param data_size		custom data size
 *
-* @return - true or false
+* @return				true or false
 */
 native aes_find_stats_thread(id = 0,Array:track_ids,callback[],data[] = "",datasize = 0);
+
+/**
+* Called when player open bonus menu.
+*
+* @param id				player id
+*
+* @return      			PLUGIN_CONTINUE to let the player open menu
+*              			PLUGIN_HANDLED or higher to stop
+*/
+forward aes_on_anew_command(id)
+
+/**
+* Called when player data is loaded.
+*
+* @param id				player id
+*
+* @noreturn
+*/
+forward aes_player_connect(id)
 
 /**
 * Called on player level up.
