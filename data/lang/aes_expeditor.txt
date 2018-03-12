@@ -53,3 +53,31 @@ ACT_ADD_EXP_S = You set rank %s for %s.
 ACT_CON_EXP = %s is now has %.0f exp.
 ACT_CON_LEVEL = %s is now %s.
 ACT_WRONG = Something is wrong...
+
+[ua]
+TITLE = Виберіть гравця
+TITLE_ACT = Дія над
+ADD_EXP = Добавити досвід
+ADD_EXP_ITEM = Добавити \y%s\w досвіду
+SUB_EXP_ITEM = Відняти \y%s\w досвіду
+SUB_EXP = Відняти досвід
+SET_EXP = Задати досвід^n
+EXP_SELF = Ввести своє значення
+SET_LEVEL = Задати рівень
+SET_BONUSES = Задати бонуси
+CUR_LEVEL = \y(зараз)
+EXP_TEXT = ^n%s^nДосвід: \y%s/%s\w^nРівень: \y%d\w [ \r%s\w ]^nБонуси: \r%d\w
+
+ACT_ADD_EXP = %s добавив вам %s досвіду.
+ACT_SUB_EXP = %s вирахував у вас %s досвіду.
+ACT_SET_BONUS = %s видав %s бонусів вам.
+ACT_SET_LEVEL = %s призначив вам звання %s.
+
+ACT_ADD_EXP_S = Ви добавили %s досвіду %s.
+ACT_ADD_EXP_S = Ви забрали %s досвіду у %s.
+ACT_ADD_EXP_S = Ви видали %s бонусів для %s.
+ACT_ADD_EXP_S = Ви встановили звання %s для %s.
+
+ACT_CON_EXP = %s тепер має %.0f досвіду.
+ACT_CON_LEVEL = %s тепер %s.
+ACT_WRONG = Щось пішло не так...

@@ -83,7 +83,7 @@ AES_STATS_DESC4 = %02dс
 
 CSXSQL_JOINS = Подключений
 CSXSQL_ROUNDS = Раундов сыграно
-CSXSQL_WINS = Раундов выйграно
+CSXSQL_WINS = Раундов выиграно
 CSXSQL_AS_T = %d за террористов
 CSXSQL_AS_CT = %d за спецназ
 CSXSQL_FIRSTJOIN = Играет с
@@ -199,5 +199,108 @@ LAST = last
 AGO = ago
 
 AES_TOP_NOW = Top current players
+CSXSQL_SESTATS_CFG = Say /history, /sestats
+AES_SAY_HOT = Say /hot,/topnow
+
+[ua]
+MENU_TAG = \r[\ySTATS\r]\w
+MENU_TITLE = Подивитися статистику
+MENU_RANK = Загальна статистика
+MENU_STATS = Особиста статистика за карту
+
+DEATHS = смертей
+
+STATS_TAG = ^1[^4STATS^1]
+AES_YOUR_RANK_IS = Ви займаєте ^4%d-е^1 місце з ^4%d^1
+STATS_HS = В голову
+STATS_SKILL = Скілл
+STATS_RANK = Звання
+STATS_EXP = Досвід
+AES_META = <meta charset=UTF-8>
+AES_STYLE = <link href="http://1337.uz/aes/aes_v.css" rel=stylesheet type=text/css>
+AES_HEADER_ROW = <tr>%s</tr>
+AES_HEADER_CELL = <th%s>%L
+AES_BODY_ROW = <tr%s>%s</tr>
+AES_BODY_CELL = <td>%s
+AES_CLOSE = </table>
+AES_TOP_BODY = <h2>%L</h2><table width=100%% border=0 align=center cellpadding=0 cellspacing=1>
+AES_TOP_HEADER_ROW = <tr>%s</tr>
+
+NO_DATA = Немає даних.
+
+RANKSTATS_TITLE = Загальна статистика гравця
+AES_RANKSTATS_BODY = <p>Загальна статистика гравця</p>
+AES_RANKSTATS_TSTATS = %s на %d місці з %d
+AES_RANKSTATS_THITS = Статистика влучень
+
+STATS_TITLE = Особиста статистика
+AES_STATS_BODY = <p>Особиста статистика зa кapту</p>
+AES_STATS_HEADER1 = Статистика
+
+THE_STATS = Статистика
+THE_RANKS = Званння
+
+AES_BOT_TOP = Toп бoтів
+AES_POS = #
+AES_PLAYER_TOP = Toп кращих гравців
+AES_HOT_PLAYERS = Топ граючих
+AES_RANK_IS = %s нa %d-oму міcці з %d
+AES_WEAPON = Зброя
+AES_YOU = Bи
+AES_PLAYER = Гравець
+AES_NAME = Імя
+AES_KILLS = Вбитo
+AES_DMG = Урон
+AES_DEATHS = Cмepтeй
+AES_HITS = Пoпaдaнь
+AES_SHOTS = Пострілів
+AES_HS = B гoлoву
+AES_ACC = Toчніcть
+AES_EFF = Ефективність
+AES_SKILL = Cкілл
+AES_ARMYRANKS = Звaння (Досвід)
+AES_NOT_TRACKED = <div class="r">Н/Д</div>
+AES_SKILL_VALUE = <div class="%s"></div>
+AES_DAMAGE = Уpoн
+AES_HEAD = B гoлoву
+AES_CHEST = B гpуди
+AES_STOMACH = B живіт
+AES_LARM = B ліву pуку
+AES_RARM = B пpaву pуку
+AES_LLEG = B ліву нoгу
+AES_RLEG = B пpaву нoгу
+
+AES_KS = K:D
+AES_HSK = HS:K
+AES_HSP = HS
+AES_TIME = Час в грі
+AES_RANK = %s (%.0f)
+
+AES_SKILL_FMT = <div id="%s">%.0f</div>
+AES_STATS_INFO1 = Немає з'єднання з БД.
+AES_STATS_INFO2 = Статистика на даний момент недоступна.
+
+AES_STATS_DESC1 = %dд %02d:%02dг
+AES_STATS_DESC2 = %02d:%02dг
+AES_STATS_DESC3 = %02dх
+AES_STATS_DESC4 = %02dс
+
+CSXSQL_JOINS = Підключень
+CSXSQL_ROUNDS = Раундів зіграно
+CSXSQL_WINS = Раундів виграно
+CSXSQL_AS_T = %d за терористів
+CSXSQL_AS_CT = %d за спецназ
+CSXSQL_FIRSTJOIN = Грає з
+
+CSXSQL_DATE = Дата
+CSXSQL_SKILLCHANGE = Зміна скіллу
+CSXSQL_MAP = Карта
+CSXSQL_SETITLE = Історія ігор
+CSXSQL_SEHTML = <h2>%s</h2><table width=100%% border=0 align=center cellpadding=0 cellspacing=1>
+
+YOURS = Ваша
+LAST = остан
+AGO = назад
+
 CSXSQL_SESTATS_CFG = Say /history, /sestats
 AES_SAY_HOT = Say /hot,/topnow
