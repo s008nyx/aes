@@ -244,7 +244,7 @@ public client_disconnected(id)
 
 public CSGameRules_DeathNotice(const victim, const killer, pevInflictor)
 {
-	if(!(0 < killer <= MaxClients) || killer == victim || !is_user_connected(victim) || !is_user_connected(killer))
+	if(killer == victim || !is_user_connected(victim) || !is_user_connected(killer))
 		return;
 
 	if(!get_pcvar_num(cvar[CVAR_XP_FFA]) && (get_member(killer, m_iTeam) == get_member(victim, m_iTeam)))
@@ -263,9 +263,7 @@ public CSGameRules_DeathNotice(const victim, const killer, pevInflictor)
 
 	g_Players[killer][STREAK_KILLS]++;
 
-	new bonusPoints = 0;
-
-	bonusPoints += get_current_player_bonuses(killer,frArrSize,0,g_BonusCvars[FRAG_ARRAY]);
+	new bonusPoints += get_current_player_bonuses(killer,frArrSize,0,g_BonusCvars[FRAG_ARRAY]);
 
 	if(get_member(victim, m_bHeadshotKilled))
 	{
