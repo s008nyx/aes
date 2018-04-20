@@ -263,7 +263,7 @@ public CSGameRules_DeathNotice(const victim, const killer, pevInflictor)
 
 	g_Players[killer][STREAK_KILLS]++;
 
-	new bonusPoints += get_current_player_bonuses(killer,frArrSize,0,g_BonusCvars[FRAG_ARRAY]);
+	new bonusPoints = get_current_player_bonuses(killer,frArrSize,0,g_BonusCvars[FRAG_ARRAY]);
 
 	if(get_member(victim, m_bHeadshotKilled))
 	{
