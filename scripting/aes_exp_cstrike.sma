@@ -131,6 +131,12 @@ public plugin_cfg()
 	RegisterHookChain(RG_CGrenade_DefuseBombEnd, "CGrenade_DefuseBombEnd", true);
 	RegisterHookChain(RG_CBasePlayer_AddAccount, "CBasePlayer_AddAccount", true);
 	RegisterHookChain(RG_CSGameRules_DeathNotice, "CSGameRules_DeathNotice", true);
+    
+	if(get_pcvar_num(cvar[CVAR_RANK])== -1)
+	{
+		RegisterHookChain(RG_CBasePlayer_Spawn, "CBasePlayer_Spawn", true);
+		is_by_stats = true;
+	}
 
 	cvar[CVAR_BONUS_ENABLE] = get_cvar_pointer("aes_bonus_enable");
 
@@ -156,11 +162,6 @@ public plugin_cfg()
 	get_pcvar_string(cvar[CVAR_ANEW_HE],levelString,charsmax(levelString));
 	heArrSize = parse_aes_bonus_values(g_BonusCvars[HE_ARRAY],levelString);
 
-	if(get_pcvar_num(cvar[CVAR_RANK])== -1)
-	{
-		RegisterHookChain(RG_CBasePlayer_Spawn, "CBasePlayer_Spawn", true);
-		is_by_stats = true;
-	}
 }
 
 
